@@ -1,0 +1,29 @@
+name: Bug report
+description: Something in JobGrid or the API is wrong
+title: "[Bug] "
+labels: []
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser, local or Azure, and whether the API was running.
+    validations:
+      required: false

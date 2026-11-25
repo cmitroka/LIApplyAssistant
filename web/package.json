@@ -6,9 +6,28 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "test:ci": "ng test --no-watch --progress=false --browsers=ChromeHeadlessCI --code-coverage",
+    "lint": "ng lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install --with-deps chromium",
+    "serve:e2e": "serve dist/jobgrid/browser -s -n -l tcp://127.0.0.1:4173",
+    "prepare": "cd .. && husky .husky"
   },
   "private": true,
+  "engines": {
+    "node": ">=20.11.1"
+  },
+  "lint-staged": {
+    "*.{ts,html}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.scss": "prettier --write",
+    "*.{js,cjs,mjs,json,md}": "prettier --write"
+  },
   "dependencies": {
     "@angular/common": "^19.2.0",
     "@angular/compiler": "^19.2.0",
@@ -25,13 +44,23 @@
     "@angular-devkit/build-angular": "^19.2.27",
     "@angular/cli": "^19.2.27",
     "@angular/compiler-cli": "^19.2.0",
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.65.1",
     "@types/jasmine": "~5.1.0",
+    "angular-eslint": "^19.8.1",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
     "jasmine-core": "~5.6.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "~5.7.2"
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.10.1",
+    "serve": "^14.2.8",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.74.0"
   }
 }
