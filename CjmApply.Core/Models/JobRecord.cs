@@ -1,4 +1,4 @@
-namespace CjmApplyAssistant.Models;
+namespace CjmApply.Core.Models;
 
 public sealed class JobRecord
 {

@@ -1,4 +1,4 @@
-using CjmApplyAssistant.Models;
+using CjmApply.Core.Models;
 using Microsoft.Data.SqlClient;
 
 namespace CjmApplyAssistant.Data;

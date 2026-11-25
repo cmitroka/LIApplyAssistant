@@ -1,0 +1,71 @@
+.shell {
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.brand__mark {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--brand);
+  color: #fff;
+}
+
+.brand__name {
+  font-size: 1.15rem;
+}
+
+.nav {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.nav a {
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.92rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+}
+
+.nav a.is-active,
+.nav a:hover {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0.5rem 1.5rem 3rem;
+}
+
+@media (max-width: 640px) {
+  .topbar,
+  .main {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

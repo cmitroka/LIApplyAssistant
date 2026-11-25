@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
-using CjmApplyAssistant.Models;
+using CjmApply.Core.Models;
 
-namespace CjmApplyAssistant.Parsing;
+namespace CjmApply.Core.Parsing;
 
 /// <summary>
 /// Best-effort parser for LinkedIn job-card paste text.

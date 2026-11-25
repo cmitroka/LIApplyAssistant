@@ -1,16 +1,16 @@
-# CJM Apply Assistant
+# CJM Apply Assistant / JobGrid
 
-Local Windows Forms app for capturing LinkedIn job-card pastes. Persistence is shared via an Azure-hosted API; the API keeps a **SQLite** database on Azure Files.
+Shared SQLite job store (Azure Files) with a SQL relay API. Primary UI is the **Angular JobGrid SPA** (`web/`). A Windows Forms app remains for local experiments but is not the focus.
 
 ## What it does
 
-1. Paste a LinkedIn job card (format varies; parser is best-effort).
-2. Extract **Job Title**, **Company**, **Location**, **Viewed**, **Posted** text/date, **Top applicant**, and compensation text when present.
-3. Build a deterministic **JobKey** = letters/numbers only from `Title + Company + Location` (primary key; upserts avoid duplicates).
-4. Manually attach an **Apply URL** (LinkedIn paste does not include it reliably).
-5. Record **Applied at**, **Comp specified**, and **Resume used**.
+1. Paste LinkedIn-style job card text into **Paste & Parse**.
+2. Server-side parse extracts **Job Title**, **Company**, **Location**, **Viewed**, **Posted** text/date, **Top applicant**, and compensation when present.
+3. Build a deterministic **JobKey** = alphanumeric-only from `Title + Company + Location` (primary key; first insert wins).
+4. Review/edit rows in the preview grid, check the ones to keep, click **Add row** to insert.
+5. Duplicates (same JobKey) are skipped; a modal reports how many were added vs skipped.
 
-## Shared SQLite on Azure (done)
+## Shared SQLite on Azure
 
 | Piece | Value |
 |---|---|
@@ -18,58 +18,66 @@ Local Windows Forms app for capturing LinkedIn job-card pastes. Persistence is s
 | File share | `pipeline-data` |
 | DB file | `cjm-apply.db` |
 | Path inside Container Apps | `/mnt/pipeline/cjm-apply.db` |
-| Existing mount | `pipeline-mcp` already mounts share as `pipelinefiles` → `/mnt/pipeline` |
 
-Schema: `Sql/CreateSqlite.sql`. Local template copy: `data/cjm-apply.db`.
+Schema: `Sql/CreateSqlite.sql`. Local copy lives under `Data/cjm-apply.db`.
 
 **Important:** SQLite on a file share needs a **single writer replica** (`maxReplicas: 1`) for the API container.
 
-## SQL relay API (`CjmApplyApi`)
+## API (`CjmApplyApi`)
 
-Minimal ASP.NET API that executes whatever SQL you send against the shared SQLite file.
-
-| | |
+| Endpoint | Purpose |
 |---|---|
-| `GET /health` | Liveness + DB path |
-| `POST /sql` | Body: `{ "sql": "...", "parameters": { "name": "value" } }` |
-| Auth | Header `X-Api-Key` or `Authorization: Bearer …` (`CJM_APPLY_API_KEY`) |
+| `GET /api/health` | Liveness + DB path |
+| `POST /api/parse` | Body `{ "text": "..." }` → `{ jobs, count }` |
+| `POST /api/jobs/import` | Body `{ "jobs": [ ... ] }` → `{ added, skipped, errors, total }` (`INSERT OR IGNORE`) |
+| `POST /api/sql` | Universal SQL relay `{ "sql", "parameters" }` |
+| Auth | Header `X-Api-Key` or `Authorization: Bearer …` (`CJM_APPLY_API_KEY`); empty key = open (local) |
 
-- `SELECT` / `WITH` / `PRAGMA` / `EXPLAIN` → `{ columns, rows, rowCount }`
-- Other statements (`INSERT`/`UPDATE`/`DELETE`/DDL) → `{ rowsAffected }`
+CORS is enabled for the SPA.
 
-Local run:
+### Local API
 
 ```powershell
 cd C:\Users\chris\Projects\CjmApplyAssistant\CjmApplyApi
-$env:CJM_APPLY_DB = "..\data\cjm-apply.db"
-$env:CJM_APPLY_API_KEY = "dev-key"
+$env:CJM_APPLY_DB = "..\Data\cjm-apply.db"
+$env:CJM_APPLY_API_KEY = ""
 dotnet run --no-launch-profile --urls http://127.0.0.1:5088
 ```
 
-Deploy to Container Apps (Docker Desktop required; ACR Tasks blocked on this sub):
+Deploy:
 
 ```powershell
 cd C:\Users\chris\Projects\CjmApplyAssistant\CjmApplyApi
 .\deploy.ps1 -ApiKey "pick-a-long-secret"
 ```
 
-## Run desktop app
+## Angular SPA (`web/`)
 
-```bash
-cd C:\Users\chris\Projects\CjmApplyAssistant
-dotnet run
+```powershell
+cd C:\Users\chris\Projects\CjmApplyAssistant\web
+npm start
 ```
+
+Opens `http://localhost:4200`. Dev API base URL is `http://127.0.0.1:5088` (`src/environments/environment.development.ts`). Set `apiKey` there if the API requires one.
+
+Routes:
+
+- `/` — Paste & Parse (ingest)
+- `/jobs` — Job Grid stub (behavior TBD)
+
+## Solution layout
+
+| Project | Role |
+|---|---|
+| `CjmApply.Core` | Shared `JobRecord`, LinkedIn paste parser, JobKey builder |
+| `CjmApplyApi` | HTTP API (parse, import, SQL) |
+| `CjmApplyAssistant` | Windows Forms (optional) |
+| `web` | Angular JobGrid SPA |
 
 ## Typical workflow
 
-1. On LinkedIn, copy a job card from search results.
-2. Paste into the app → **Parse Paste**.
-3. Fix any mis-parsed fields (LI layouts vary; blank/misread fields are normal).
-4. Use **LinkedIn Search** to find the posting, copy the job URL into **Apply URL**.
-5. When you apply: check **Applied**, set **Comp specified** / **Resume used**, then save via the API.
-
-To paste several cards at once, separate them with a line of `---` between cards.
-
-## Schema
-
-Single table `Jobs`. Primary key `JobKey` (alphanumeric concat of title, company, location).
+1. Copy job cards from LinkedIn search results.
+2. Paste into JobGrid → **Parse extract**.
+3. Fix mis-parsed fields in the preview grid.
+4. Check rows → **Add row** → confirm added/skipped in the modal.
+5. Separate multiple cards with a line of `---` if needed.
