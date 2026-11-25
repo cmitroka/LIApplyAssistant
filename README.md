@@ -124,7 +124,7 @@ Pre-commit (Husky + lint-staged) runs ESLint `--fix` and Prettier on staged file
 
 ### Coverage
 
-`npm run test:ci` prints a summary and writes `web/coverage/jobgrid/` (`coverage-summary.json`, `lcov.info`, HTML). CI uploads that directory as the `coverage-report` artifact and writes the totals into the job summary. On a pull request opened from this repository, it also comments the totals (the comment is updated in place). Pull requests from forks still get the artifact and the job summary; GitHub gives those workflows a read-only token, so the comment step is skipped and cannot fail the job.
+`npm run test:ci` prints a summary and writes `web/coverage/jobgrid/` (`coverage-summary.json`, `lcov.info`, HTML). CI uploads that directory as the `coverage-report` artifact and writes the totals into the job summary. On a pull request opened from this repository, it also comments the totals (the comment is updated in place). Pull requests from forks still get the artifact and the job summary; GitHub gives those workflows a read-only token, so the comment step is skipped and cannot fail the job. Dependabot pull requests are from this repository. The unit-test job sets `pull-requests: write`, which Dependabot-triggered runs honor, so those pull requests do get the comment.
 
 Starter specs cover the shell, routes, `ApiService`, paste/parse (including CSV escaping and API errors), the import-result modal, and the Job Grid stub. Measured baseline:
 
@@ -153,12 +153,12 @@ Do this in GitHub after the checks on this repository have run once (they only s
 | Require conversation resolution before merging | On |
 | Require status checks to pass before merging | On |
 | Require branches to be up to date before merging | On |
-| Require these status checks (exact job names) | `lint`, `build`, `unit-tests`, `e2e`, `Analyze (javascript-typescript)` |
+| Require these status checks (exact job names) | `lint`, `build`, `unit-tests`, `e2e`. Add `Analyze (javascript-typescript)` only after that check is green (see step 6). |
 | Allow force pushes | **Off** |
 
 Leave "Do not allow bypassing the above settings" on if you want admins held to the same rule. Also leave deletions off. The same requirements exist as a ruleset (Settings → Rules → Rulesets) if you prefer that UI; the check names do not change.
 
-On a pull request the rows are grouped as `CI / lint`, `CI / build`, `CI / unit-tests`, `CI / e2e`, and `CodeQL / Analyze (javascript-typescript)`. The string branch protection stores is the job `name`, which is the list above. Search for that name in the status-check box after the workflows have completed once, and pick the GitHub Actions entry.
+On a pull request the rows are grouped as `CI / lint`, `CI / build`, `CI / unit-tests`, `CI / e2e`, and `CodeQL / Analyze (javascript-typescript)`. The string branch protection stores is the job `name`: `lint`, `build`, `unit-tests`, `e2e`, and, once code scanning is enabled, `Analyze (javascript-typescript)`. Search for that name in the status-check box after the workflows have completed once, and pick the GitHub Actions entry.
 
 Do **not** require `azure-static-web-apps` until a deploy with the token has succeeded. It is not a test gate. While the secret is unset the job is green because it skips, which would hide a later token or Azure failure if you required it too early.
 
@@ -194,4 +194,4 @@ Local development is the path that works today: `environment.development.ts` sen
 3. **Do not treat the hosted SPA as able to parse or import yet.** Setting `apiBaseUrl` and `Cors:Origins` only lets the browser reach the API host. Parse and import stay unauthorized while the API key is set and the production bundle's `apiKey` stays empty. Leave `apiKey` empty. A browser-safe gate (server-side proxy or user auth) still has to be built before those two routes work from Static Web Apps. Local `dev-key` is the supported client until then.
 4. **Turn on branch protection** for `main` using the table above. Wait until the check names exist, then add them exactly.
 5. **Enable secret scanning** (Settings → Code security and analysis → Secret scanning, plus push protection). On a private personal repository this needs GitHub Secret Protection; if the toggle is missing, that is the plan gap, not a missing file in this repo.
-6. **Enable code scanning** so the CodeQL job can upload results (Settings → Code security). On this private repository the analysis runs, then the job fails with "Code scanning is not enabled" until that feature is on. Leave `.github/workflows/codeql.yml` as the advanced setup. Do not also enable CodeQL default setup, or the two configurations will fight. After it is enabled, the check name to require is `Analyze (javascript-typescript)`.
+6. **Enable code scanning** so the CodeQL job can upload results (Settings → Code security). On this private repository the analysis runs, then the job fails with "Code scanning is not enabled" until that feature is on. GitHub Free and GitHub Pro include code scanning for public repositories only. On a private personal repository the Code Security toggle is missing when the plan does not include GitHub Code Security, and `Analyze (javascript-typescript)` stays failed. Do not add that name as a required status check until it is green, or merges to `main` stay blocked. Leave `.github/workflows/codeql.yml` as the advanced setup. Do not also enable CodeQL default setup, or the two configurations will fight. After it is enabled, the check name to require is `Analyze (javascript-typescript)`.
