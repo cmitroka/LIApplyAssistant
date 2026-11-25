@@ -29,5 +29,5 @@ export interface ImportResponse {
   added: number;
   skipped: number;
   total: number;
-  errors: Array<{ jobKey?: string; jobTitle?: string; error: string }>;
+  errors: { jobKey?: string; jobTitle?: string; error: string }[];
 }

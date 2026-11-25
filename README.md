@@ -133,7 +133,7 @@ Starter specs cover the shell, routes, `ApiService`, paste/parse (including CSV 
 | Statements | 99.18% (121/122) | 90% |
 | Branches | 90.32% (56/62) | 80% |
 | Functions | 100% (44/44) | 95% |
-| Lines | 99% (99/100) | 90% |
+| Lines | 98.98% (98/99) | 90% |
 
 The gates sit under the baseline so one awkward branch does not flake CI, and a deleted test still fails the build. The missed line is the last-resort fallback in `PasteParseComponent.errorMessage`. `main.ts` is not in this denominator: Karma starts from the specs. The Playwright smoke tests boot that file.
 
