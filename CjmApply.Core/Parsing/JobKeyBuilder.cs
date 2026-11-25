@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace CjmApplyAssistant.Parsing;
+namespace CjmApply.Core.Parsing;
 
 public static partial class JobKeyBuilder
 {

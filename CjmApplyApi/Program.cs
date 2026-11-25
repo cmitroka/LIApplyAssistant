@@ -1,4 +1,6 @@
 using System.Text.Json;
+using CjmApply.Core.Models;
+using CjmApply.Core.Parsing;
 using Microsoft.Data.Sqlite;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,18 +15,61 @@ var apiKey = Environment.GetEnvironmentVariable("CJM_APPLY_API_KEY")
 
 builder.Services.AddSingleton(new SqliteOptions(dbPath, apiKey));
 
+// Browser callers (SPA) only — allow listed origins. Empty list = no CORS
+// (non-browser clients with an API key are unaffected).
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
+    ?? Array.Empty<string>();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyHeader().AllowAnyMethod();
+        if (corsOrigins.Length > 0)
+            policy.WithOrigins(corsOrigins);
+        else
+            policy.SetIsOriginAllowed(_ => false);
+    });
+});
+
 var app = builder.Build();
 
 EnsureDatabase(dbPath);
 
-app.MapGet("/health", (SqliteOptions options) => Results.Ok(new
+if (corsOrigins.Length > 0)
+    app.UseCors();
+
+var api = app.MapGroup("/api");
+
+api.MapGet("/health", (SqliteOptions options) => Results.Ok(new
 {
     status = "ok",
     dbPath = options.DbPath,
     dbExists = File.Exists(options.DbPath),
 }));
 
-app.MapPost("/sql", async (SqlRequest request, SqliteOptions options, HttpRequest http) =>
+api.MapPost("/parse", (ParseRequest request, SqliteOptions options, HttpRequest http) =>
+{
+    if (!IsAuthorized(http, options.ApiKey))
+        return Results.Unauthorized();
+
+    var jobs = LinkedInPasteParser.Parse(request.Text ?? "");
+    var dto = jobs.Select(ToDto).ToList();
+    return Results.Ok(new { jobs = dto, count = dto.Count });
+});
+
+api.MapPost("/jobs/import", async (ImportRequest request, SqliteOptions options, HttpRequest http) =>
+{
+    if (!IsAuthorized(http, options.ApiKey))
+        return Results.Unauthorized();
+
+    if (request.Jobs is null || request.Jobs.Count == 0)
+        return Results.BadRequest(new { error = "jobs is required" });
+
+    var result = await ImportJobsAsync(options.DbPath, request.Jobs);
+    return Results.Ok(result);
+});
+
+api.MapPost("/sql", async (SqlRequest request, SqliteOptions options, HttpRequest http) =>
 {
     if (!IsAuthorized(http, options.ApiKey))
         return Results.Unauthorized();
@@ -44,6 +89,125 @@ app.MapPost("/sql", async (SqlRequest request, SqliteOptions options, HttpReques
 });
 
 app.Run();
+
+static JobDto ToDto(JobRecord job) => new()
+{
+    JobKey = job.JobKey,
+    JobTitle = job.JobTitle,
+    Company = job.Company,
+    Location = job.Location,
+    Viewed = job.Viewed,
+    PostedDateText = job.PostedDateText,
+    PostedDate = job.PostedDate?.ToString("yyyy-MM-dd"),
+    IsTopApplicant = job.IsTopApplicant,
+    ApplyUrl = job.ApplyUrl,
+    CompensationText = job.CompensationText,
+    CompSpecified = job.CompSpecified,
+    ResumeUsed = job.ResumeUsed,
+    AppliedAt = job.AppliedAt?.ToString("o"),
+    RawPaste = job.RawPaste,
+};
+
+static async Task<object> ImportJobsAsync(string dbPath, List<JobDto?> jobs)
+{
+    var added = 0;
+    var skipped = 0;
+    var errors = new List<object>();
+
+    await using var connection = new SqliteConnection($"Data Source={dbPath}");
+    await connection.OpenAsync();
+
+    await using (var pragma = connection.CreateCommand())
+    {
+        pragma.CommandText = "PRAGMA busy_timeout = 5000;";
+        await pragma.ExecuteNonQueryAsync();
+    }
+
+    foreach (var job in jobs)
+    {
+        if (job is null)
+        {
+            errors.Add(new { error = "Job entry was null" });
+            continue;
+        }
+
+        var title = job.JobTitle?.Trim() ?? "";
+        var company = job.Company?.Trim() ?? "";
+        var location = job.Location?.Trim();
+        var jobKey = string.IsNullOrWhiteSpace(job.JobKey)
+            ? JobKeyBuilder.Build(title, company, location)
+            : job.JobKey.Trim();
+
+        if (string.IsNullOrWhiteSpace(jobKey) || string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(company))
+        {
+            errors.Add(new { jobKey, error = "JobTitle and Company are required" });
+            continue;
+        }
+
+        // Recompute key from editable fields so preview edits stick.
+        jobKey = JobKeyBuilder.Build(title, company, location);
+        if (string.IsNullOrWhiteSpace(jobKey))
+        {
+            errors.Add(new { jobTitle = title, error = "Could not build JobKey" });
+            continue;
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT OR IGNORE INTO Jobs (
+                    JobKey, JobTitle, Company, Location, Viewed, PostedDateText, PostedDate,
+                    IsTopApplicant, ApplyUrl, CompensationText, CompSpecified, ResumeUsed,
+                    AppliedAt, RawPaste, CreatedAt, UpdatedAt
+                ) VALUES (
+                    @JobKey, @JobTitle, @Company, @Location, @Viewed, @PostedDateText, @PostedDate,
+                    @IsTopApplicant, @ApplyUrl, @CompensationText, @CompSpecified, @ResumeUsed,
+                    @AppliedAt, @RawPaste, @Now, @Now
+                );
+                """;
+
+            var now = DateTime.UtcNow.ToString("o");
+            command.Parameters.AddWithValue("@JobKey", jobKey);
+            command.Parameters.AddWithValue("@JobTitle", title);
+            command.Parameters.AddWithValue("@Company", company);
+            command.Parameters.AddWithValue("@Location", (object?)location ?? DBNull.Value);
+            command.Parameters.AddWithValue("@Viewed", job.Viewed ? 1 : 0);
+            command.Parameters.AddWithValue("@PostedDateText", (object?)job.PostedDateText ?? DBNull.Value);
+            command.Parameters.AddWithValue("@PostedDate", (object?)job.PostedDate ?? DBNull.Value);
+            command.Parameters.AddWithValue("@IsTopApplicant", job.IsTopApplicant ? 1 : 0);
+            command.Parameters.AddWithValue("@ApplyUrl", (object?)job.ApplyUrl ?? DBNull.Value);
+            command.Parameters.AddWithValue("@CompensationText", (object?)job.CompensationText ?? DBNull.Value);
+            command.Parameters.AddWithValue("@CompSpecified", (object?)job.CompSpecified ?? DBNull.Value);
+            command.Parameters.AddWithValue("@ResumeUsed", (object?)job.ResumeUsed ?? DBNull.Value);
+            command.Parameters.AddWithValue("@AppliedAt", (object?)job.AppliedAt ?? DBNull.Value);
+            command.Parameters.AddWithValue("@RawPaste", (object?)job.RawPaste ?? DBNull.Value);
+            command.Parameters.AddWithValue("@Now", now);
+
+            var affected = await command.ExecuteNonQueryAsync();
+            if (affected > 0)
+                added++;
+            else
+                skipped++;
+        }
+        catch (Exception ex)
+        {
+            // PK / constraint failures count as skipped so first-write wins.
+            if (ex.Message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) ||
+                ex.Message.Contains("PRIMARY KEY", StringComparison.OrdinalIgnoreCase) ||
+                ex.Message.Contains("constraint", StringComparison.OrdinalIgnoreCase))
+            {
+                skipped++;
+            }
+            else
+            {
+                errors.Add(new { jobKey, error = ex.Message });
+            }
+        }
+    }
+
+    return new { added, skipped, errors, total = jobs.Count };
+}
 
 static bool IsAuthorized(HttpRequest http, string expectedKey)
 {
@@ -236,4 +400,32 @@ internal sealed class SqlRequest
 {
     public string Sql { get; set; } = "";
     public Dictionary<string, JsonElement>? Parameters { get; set; }
+}
+
+internal sealed class ParseRequest
+{
+    public string? Text { get; set; }
+}
+
+internal sealed class ImportRequest
+{
+    public List<JobDto?>? Jobs { get; set; }
+}
+
+internal sealed class JobDto
+{
+    public string? JobKey { get; set; }
+    public string? JobTitle { get; set; }
+    public string? Company { get; set; }
+    public string? Location { get; set; }
+    public bool Viewed { get; set; }
+    public string? PostedDateText { get; set; }
+    public string? PostedDate { get; set; }
+    public bool IsTopApplicant { get; set; }
+    public string? ApplyUrl { get; set; }
+    public string? CompensationText { get; set; }
+    public string? CompSpecified { get; set; }
+    public string? ResumeUsed { get; set; }
+    public string? AppliedAt { get; set; }
+    public string? RawPaste { get; set; }
 }

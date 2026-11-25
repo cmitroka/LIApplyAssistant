@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@450;500;600;700;800&display=swap');
+
+:root {
+  --brand: #5b5bd6;
+  --brand-hover: #4b4bc4;
+  --brand-soft: #ececff;
+  --bg: #f3f4f8;
+  --surface: #ffffff;
+  --text: #17181d;
+  --muted: #6b7285;
+  --border: #e4e6ef;
+  --radius: 12px;
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, #e8e8ff 0%, transparent 55%),
+    radial-gradient(900px 400px at 100% 0%, #f0f4ff 0%, transparent 50%),
+    var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  padding: 0.65rem 1rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--brand);
+  color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--brand-hover);
+}
+
+.btn--ghost {
+  background: #fff;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  border-color: #c0c3d1;
+  background: #fafbff;
+}
+
+.btn--compact {
+  padding: 0.55rem 0.85rem;
+}

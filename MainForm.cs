@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using CjmApplyAssistant.Data;
-using CjmApplyAssistant.Models;
-using CjmApplyAssistant.Parsing;
+using CjmApply.Core.Models;
+using CjmApply.Core.Parsing;
 using Microsoft.Extensions.Configuration;
 
 namespace CjmApplyAssistant;

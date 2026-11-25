@@ -1,0 +1,241 @@
+<div class="page">
+  <header class="page-header">
+    <div class="page-header__copy">
+      <nav class="crumb" aria-label="Application navigation">
+        <span>JOBGRID</span>
+        <span class="crumb__sep">/</span>
+        <span>EXTRACT PARSER</span>
+      </nav>
+      <h1>Paste &amp; Parse</h1>
+      <p class="lede">Paste a job extract, review the parsed data, and edit any field.</p>
+    </div>
+    <button type="button" class="btn btn--ghost" (click)="newPaste()">
+      New paste
+    </button>
+  </header>
+
+  @if (parseError()) {
+    <div class="banner banner--error" role="alert">{{ parseError() }}</div>
+  }
+
+  @if (pastePanelOpen()) {
+    <section class="card paste-card" aria-labelledby="paste-heading">
+      <div class="card__head">
+        <div class="card__title-row">
+          <span class="step">1</span>
+          <div>
+            <h2 id="paste-heading">Paste your data extract</h2>
+            <p class="card__sub">Paste job listings (separate cards with a line of ---).</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="icon-btn"
+          (click)="closePastePanel()"
+          aria-label="Close paste panel"
+        >
+          ×
+        </button>
+      </div>
+
+      <label class="sr-only" for="job-extract">Job data extract</label>
+      <textarea
+        id="job-extract"
+        class="paste-area"
+        rows="12"
+        placeholder="Paste your job extract here...
+
+Example:
+Senior Product Designer
+Northstar Labs
+Austin, TX
+Viewed
+Posted 2 days ago
+You'd be a top applicant"
+        [ngModel]="pasteText()"
+        (ngModelChange)="onPasteInput($event)"
+      ></textarea>
+
+      <div class="paste-card__footer">
+        <div class="paste-card__meta">
+          <button type="button" class="link-btn" (click)="loadSample()">Load sample data</button>
+          <span class="char-count">{{ charCount() }} characters</span>
+        </div>
+        <button
+          type="button"
+          class="btn btn--primary"
+          (click)="parseExtract()"
+          [disabled]="parsing()"
+        >
+          {{ parsing() ? 'Parsing…' : 'Parse extract' }}
+        </button>
+      </div>
+    </section>
+  } @else {
+    <button type="button" class="reopen-paste" (click)="openPastePanel()">
+      Show paste panel
+    </button>
+  }
+
+  <section class="card preview-card" aria-labelledby="preview-heading">
+    <div class="card__head card__head--stack">
+      <div class="card__title-row">
+        <span class="step">2</span>
+        <div>
+          <h2 id="preview-heading">Preview &amp; edit</h2>
+          <p class="card__sub">
+            @if (jobs().length === 0) {
+              Parsed jobs will appear here.
+            } @else {
+              {{ jobs().length }} job{{ jobs().length === 1 ? '' : 's' }} found
+              · {{ topApplicantCount() }} top applicant{{ topApplicantCount() === 1 ? '' : 's' }}
+            }
+          </p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button
+          type="button"
+          class="btn btn--ghost"
+          (click)="addRow()"
+          [disabled]="saving() || selectedCount() === 0"
+          title="Save checked rows to the database"
+        >
+          + Add row
+        </button>
+        <button
+          type="button"
+          class="btn btn--ghost"
+          (click)="deleteSelected()"
+          [disabled]="selectedCount() === 0"
+        >
+          Delete
+        </button>
+        <button
+          type="button"
+          class="btn btn--primary btn--compact"
+          (click)="exportCsv()"
+          [disabled]="jobs().length === 0"
+        >
+          Export CSV
+        </button>
+      </div>
+    </div>
+
+    @if (jobs().length === 0) {
+      <div class="empty">
+        <p>No parsed jobs yet. Paste an extract above and click <strong>Parse extract</strong>.</p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th class="col-check">
+                <input
+                  type="checkbox"
+                  [checked]="allSelected()"
+                  (change)="toggleSelectAll($any($event.target).checked)"
+                  aria-label="Select all jobs"
+                />
+              </th>
+              <th>Job title</th>
+              <th>Poster / company</th>
+              <th>Location</th>
+              <th>Viewed</th>
+              <th>Posted</th>
+              <th>Top applicant</th>
+              <th>Compensation</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (job of jobs(); track job.id) {
+              <tr [class.is-selected]="job.selected">
+                <td class="col-check">
+                  <input
+                    type="checkbox"
+                    [checked]="job.selected"
+                    (change)="toggleRow(job.id, $any($event.target).checked)"
+                    [attr.aria-label]="'Select ' + (job.jobTitle || 'job')"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cell-input"
+                    [ngModel]="job.jobTitle"
+                    (ngModelChange)="updateField(job.id, 'jobTitle', $event)"
+                    aria-label="Job title"
+                    placeholder="Enter job title"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cell-input"
+                    [ngModel]="job.company"
+                    (ngModelChange)="updateField(job.id, 'company', $event)"
+                    aria-label="Poster or company"
+                    placeholder="Enter company"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="cell-input"
+                    [ngModel]="job.location"
+                    (ngModelChange)="updateField(job.id, 'location', $event)"
+                    aria-label="Location"
+                    placeholder="Enter location"
+                  />
+                </td>
+                <td>
+                  <select
+                    class="cell-select"
+                    [ngModel]="job.viewed ? 'yes' : 'no'"
+                    (ngModelChange)="updateField(job.id, 'viewed', $event === 'yes')"
+                    aria-label="Viewed status"
+                  >
+                    <option value="yes">Viewed</option>
+                    <option value="no">Not viewed</option>
+                  </select>
+                </td>
+                <td>
+                  <input
+                    class="cell-input"
+                    [ngModel]="job.postedDateText"
+                    (ngModelChange)="updateField(job.id, 'postedDateText', $event)"
+                    aria-label="Posted date"
+                    placeholder="Enter date"
+                  />
+                </td>
+                <td>
+                  <select
+                    class="cell-select"
+                    [ngModel]="job.isTopApplicant ? 'yes' : 'no'"
+                    (ngModelChange)="updateField(job.id, 'isTopApplicant', $event === 'yes')"
+                    aria-label="Top applicant"
+                  >
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </td>
+                <td>
+                  <input
+                    class="cell-input"
+                    [ngModel]="job.compensationText"
+                    (ngModelChange)="updateField(job.id, 'compensationText', $event)"
+                    aria-label="Compensation"
+                    placeholder="—"
+                  />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>
+
+@if (importResult(); as result) {
+  <app-result-modal [result]="result" (closed)="closeModal()" />
+}

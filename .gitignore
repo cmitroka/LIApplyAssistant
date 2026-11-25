@@ -5,6 +5,11 @@ obj/
 *.suo
 *.userosscache
 
+## Angular
+web/node_modules/
+web/dist/
+web/.angular/
+
 ## Secrets / local config
 .api-key.local
 *.local

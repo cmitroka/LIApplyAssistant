@@ -15,8 +15,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $root
+$apiDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $apiDir
+Set-Location $apiDir
 
 $image = "$AcrName.azurecr.io/cjm-apply-api:$ImageTag"
 
@@ -26,8 +27,8 @@ if (-not $SkipBuild) {
         throw "Docker daemon is not running. Start Docker Desktop and retry."
     }
 
-    Write-Host "Building $image locally ..."
-    docker build -t $image .
+    Write-Host "Building $image locally (context: repo root) ..."
+    docker build -f (Join-Path $apiDir "Dockerfile") -t $image $repoRoot
     if ($LASTEXITCODE -ne 0) { throw "docker build failed" }
 
     Write-Host "Logging into ACR ..."
@@ -118,7 +119,7 @@ properties:
       probes:
       - type: Liveness
         httpGet:
-          path: /health
+          path: /api/health
           port: 8080
         initialDelaySeconds: 5
         periodSeconds: 30
@@ -139,6 +140,6 @@ if ($LASTEXITCODE -ne 0) { throw "yaml update failed" }
 $fqdn = az containerapp show -g $ResourceGroup -n $AppName --query "properties.configuration.ingress.fqdn" -o tsv
 Write-Host ""
 Write-Host "Deployed: https://$fqdn"
-Write-Host "Health:   https://$fqdn/health"
-Write-Host "SQL:      POST https://$fqdn/sql"
+Write-Host "Health:   https://$fqdn/api/health"
+Write-Host "SQL:      POST https://$fqdn/api/sql"
 Write-Host "Header:   X-Api-Key: <your key>"
