@@ -1,0 +1,23 @@
+## Build
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+
+## Secrets / local config
+.api-key.local
+*.local
+.env
+.env.*
+
+## Local SQLite data
+*.db
+*.db-shm
+*.db-wal
+
+## OS / IDE
+.DS_Store
+Thumbs.db
+.vs/
+.idea/

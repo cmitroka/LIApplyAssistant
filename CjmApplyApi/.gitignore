@@ -1,0 +1,4 @@
+bin/
+obj/
+.api-key.local
+*.user

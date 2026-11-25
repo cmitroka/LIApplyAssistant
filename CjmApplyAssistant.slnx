@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="CjmApplyApi/CjmApplyApi.csproj" />
+  <Project Path="CjmApplyAssistant.csproj" />
+</Solution>
