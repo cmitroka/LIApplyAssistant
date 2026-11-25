@@ -31,20 +31,21 @@ Schema: `Sql/CreateSqlite.sql`. Local copy lives under `Data/cjm-apply.db`.
 | `POST /api/parse` | Body `{ "text": "..." }` → `{ jobs, count }` |
 | `POST /api/jobs/import` | Body `{ "jobs": [ ... ] }` → `{ added, skipped, errors, total }` (`INSERT OR IGNORE`) |
 | `POST /api/sql` | Universal SQL relay `{ "sql", "parameters" }` |
-| Auth | Header `X-Api-Key` or `Authorization: Bearer …` (`CJM_APPLY_API_KEY`); empty key = open (local) |
+| Auth | Header `X-Api-Key` or `Authorization: Bearer …` (`CJM_APPLY_API_KEY`); empty key = open (local only — avoid with the SPA) |
 
-CORS is enabled for the SPA.
+CORS is allow-listed via `Cors:Origins` (Development defaults to `http://localhost:4200`). Production ships with an empty list (no browser CORS) unless you set origins explicitly. `/api/sql` is for trusted non-browser clients; do not put the API key in the SPA bundle.
 
 ### Local API
 
 ```powershell
 cd C:\Users\chris\Projects\CjmApplyAssistant\CjmApplyApi
+$env:ASPNETCORE_ENVIRONMENT = "Development"   # loads Cors:Origins for the SPA
 $env:CJM_APPLY_DB = "..\Data\cjm-apply.db"
-$env:CJM_APPLY_API_KEY = ""
+$env:CJM_APPLY_API_KEY = "dev-key"
 dotnet run --no-launch-profile --urls http://127.0.0.1:5088
 ```
 
-Deploy:
+Deploy (Docker build context is the **repo root** so `CjmApply.Core` is included):
 
 ```powershell
 cd C:\Users\chris\Projects\CjmApplyAssistant\CjmApplyApi
@@ -55,10 +56,11 @@ cd C:\Users\chris\Projects\CjmApplyAssistant\CjmApplyApi
 
 ```powershell
 cd C:\Users\chris\Projects\CjmApplyAssistant\web
+npm install
 npm start
 ```
 
-Opens `http://localhost:4200`. Dev API base URL is `http://127.0.0.1:5088` (`src/environments/environment.development.ts`). Set `apiKey` there if the API requires one.
+Opens `http://localhost:4200`. Dev API base URL is `http://127.0.0.1:5088` (`src/environments/environment.development.ts`). Set matching `apiKey` there for local keyed API access.
 
 Routes:
 

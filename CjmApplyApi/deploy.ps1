@@ -15,8 +15,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $root
+$apiDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $apiDir
+Set-Location $apiDir
 
 $image = "$AcrName.azurecr.io/cjm-apply-api:$ImageTag"
 
@@ -26,8 +27,8 @@ if (-not $SkipBuild) {
         throw "Docker daemon is not running. Start Docker Desktop and retry."
     }
 
-    Write-Host "Building $image locally ..."
-    docker build -t $image .
+    Write-Host "Building $image locally (context: repo root) ..."
+    docker build -f (Join-Path $apiDir "Dockerfile") -t $image $repoRoot
     if ($LASTEXITCODE -ne 0) { throw "docker build failed" }
 
     Write-Host "Logging into ACR ..."

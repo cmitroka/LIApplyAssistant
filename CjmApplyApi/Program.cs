@@ -14,19 +14,29 @@ var apiKey = Environment.GetEnvironmentVariable("CJM_APPLY_API_KEY")
     ?? "";
 
 builder.Services.AddSingleton(new SqliteOptions(dbPath, apiKey));
+
+// Browser callers (SPA) only — allow listed origins. Empty list = no CORS
+// (non-browser clients with an API key are unaffected).
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
+    ?? Array.Empty<string>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.AllowAnyHeader()
-            .AllowAnyMethod()
-            .SetIsOriginAllowed(_ => true));
+    {
+        policy.AllowAnyHeader().AllowAnyMethod();
+        if (corsOrigins.Length > 0)
+            policy.WithOrigins(corsOrigins);
+        else
+            policy.SetIsOriginAllowed(_ => false);
+    });
 });
 
 var app = builder.Build();
 
 EnsureDatabase(dbPath);
 
-app.UseCors();
+if (corsOrigins.Length > 0)
+    app.UseCors();
 
 var api = app.MapGroup("/api");
 
@@ -98,7 +108,7 @@ static JobDto ToDto(JobRecord job) => new()
     RawPaste = job.RawPaste,
 };
 
-static async Task<object> ImportJobsAsync(string dbPath, List<JobDto> jobs)
+static async Task<object> ImportJobsAsync(string dbPath, List<JobDto?> jobs)
 {
     var added = 0;
     var skipped = 0;
@@ -115,6 +125,12 @@ static async Task<object> ImportJobsAsync(string dbPath, List<JobDto> jobs)
 
     foreach (var job in jobs)
     {
+        if (job is null)
+        {
+            errors.Add(new { error = "Job entry was null" });
+            continue;
+        }
+
         var title = job.JobTitle?.Trim() ?? "";
         var company = job.Company?.Trim() ?? "";
         var location = job.Location?.Trim();
@@ -393,7 +409,7 @@ internal sealed class ParseRequest
 
 internal sealed class ImportRequest
 {
-    public List<JobDto>? Jobs { get; set; }
+    public List<JobDto?>? Jobs { get; set; }
 }
 
 internal sealed class JobDto
