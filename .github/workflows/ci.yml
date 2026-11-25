@@ -116,8 +116,14 @@ jobs:
         if: always()
         run: node scripts/coverage-summary.mjs
 
+      # Fork pull requests get a read-only GITHUB_TOKEN even when this job
+      # requests pull-requests: write, so commenting would fail the job.
+      # The artifact upload and the step summary above still run for forks.
       - name: Comment coverage on the pull request
-        if: github.event_name == 'pull_request' && hashFiles('web/coverage/summary.md') != ''
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          hashFiles('web/coverage/summary.md') != ''
         uses: actions/github-script@v7
         with:
           script: |

@@ -124,7 +124,7 @@ Pre-commit (Husky + lint-staged) runs ESLint `--fix` and Prettier on staged file
 
 ### Coverage
 
-`npm run test:ci` prints a summary and writes `web/coverage/jobgrid/` (`coverage-summary.json`, `lcov.info`, HTML). CI uploads that directory as the `coverage-report` artifact and, on pull requests, comments the totals (the comment is updated in place).
+`npm run test:ci` prints a summary and writes `web/coverage/jobgrid/` (`coverage-summary.json`, `lcov.info`, HTML). CI uploads that directory as the `coverage-report` artifact and writes the totals into the job summary. On a pull request opened from this repository, it also comments the totals (the comment is updated in place). Pull requests from forks still get the artifact and the job summary; GitHub gives those workflows a read-only token, so the comment step is skipped and cannot fail the job.
 
 Starter specs cover the shell, routes, `ApiService`, paste/parse (including CSV escaping and API errors), the import-result modal, and the Job Grid stub. Measured baseline:
 
@@ -175,7 +175,11 @@ The SPA is a static Angular build. `web/public/staticwebapp.config.json` is copi
 
 The API (`CjmApplyApi`) does **not** belong on Static Web Apps. It is an ASP.NET process with a SQLite file on Azure Files and a single writer (`maxReplicas: 1`). Keep deploying it with `CjmApplyApi/deploy.ps1` to **Azure Container Apps**. App Service can host that API if you would rather not run Container Apps, but you would still need a single-writer disk for SQLite; the file share mounted into Container Apps matches the current design, and Static Web Apps managed functions cannot.
 
-The production bundle currently calls `apiBaseUrl: ''` (`web/src/environments/environment.production.ts`), so a deployed SPA will not reach the API until that origin is set. Do not put `CJM_APPLY_API_KEY` in the browser bundle. Add the Static Web App origin (and preview origins, if browsers call the API from previews) to the API `Cors:Origins` list. Production CORS ships empty on purpose.
+The production bundle calls `apiBaseUrl: ''` and `apiKey: ''` (`web/src/environments/environment.production.ts`). `ApiService.parse` and `ApiService.importJobs` post to `/api/parse` and `/api/jobs/import` and attach `X-Api-Key` only when `apiKey` is non-empty. The API allows those routes only when `CJM_APPLY_API_KEY` is empty, or when the header matches that key (`IsAuthorized` in `CjmApplyApi/Program.cs`). `deploy.ps1` always sets a key, so a hosted SPA with an empty `apiKey` receives 401 on parse and import.
+
+Do not put `CJM_APPLY_API_KEY` in `environment.production.ts`. Anyone who can load the site can read the bundle. This repo has no browser-safe substitute yet (no user login, and no same-origin proxy that keeps the key on the server). Static Web Apps hosting plus CORS is enough for the shell and for client-side routes. It is not a working Paste & Parse or Add row path against the keyed API.
+
+Local development is the path that works today: `environment.development.ts` sends `apiKey: 'dev-key'` to `http://127.0.0.1:5088`, and the local API is started with the same value. That file is not what `ng build` ships.
 
 ### Dependency and security automation
 
@@ -187,7 +191,7 @@ The production bundle currently calls `apiBaseUrl: ''` (`web/src/environments/en
 
 1. **Create the Azure Static Web App** (custom / other deployment source, not the Azure-generated workflow). Copy its deployment token.
 2. **Add the Actions secret** `AZURE_STATIC_WEB_APPS_API_TOKEN` (Settings → Secrets and variables → Actions). The next push to `main` deploys; pull requests get previews.
-3. **Point the SPA at the API** by setting `apiBaseUrl` in `environment.production.ts`, and allow that site in the API CORS list. Rebuild and deploy.
+3. **Do not treat the hosted SPA as able to parse or import yet.** Setting `apiBaseUrl` and `Cors:Origins` only lets the browser reach the API host. Parse and import stay unauthorized while the API key is set and the production bundle's `apiKey` stays empty. Leave `apiKey` empty. A browser-safe gate (server-side proxy or user auth) still has to be built before those two routes work from Static Web Apps. Local `dev-key` is the supported client until then.
 4. **Turn on branch protection** for `main` using the table above. Wait until the check names exist, then add them exactly.
 5. **Enable secret scanning** (Settings → Code security and analysis → Secret scanning, plus push protection). On a private personal repository this needs GitHub Secret Protection; if the toggle is missing, that is the plan gap, not a missing file in this repo.
-6. If the CodeQL job reports that code scanning is disabled, enable **GitHub Code Security** for this private repository. Leave the workflow in place (advanced setup). Do not also enable CodeQL default setup, or the two configurations will fight.
+6. **Enable code scanning** so the CodeQL job can upload results (Settings → Code security). On this private repository the analysis runs, then the job fails with "Code scanning is not enabled" until that feature is on. Leave `.github/workflows/codeql.yml` as the advanced setup. Do not also enable CodeQL default setup, or the two configurations will fight. After it is enabled, the check name to require is `Analyze (javascript-typescript)`.
