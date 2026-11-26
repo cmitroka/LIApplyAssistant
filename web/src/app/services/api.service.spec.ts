@@ -52,7 +52,11 @@ describe('ApiService', () => {
         company: 'Northstar',
         location: 'Austin, TX',
         viewed: true,
+        applied: false,
+        ignored: false,
         isTopApplicant: false,
+        postedDateText: '2026-01-01',
+        compensationText: '100,000 - 120,000',
       },
     ];
     let added = -1;
