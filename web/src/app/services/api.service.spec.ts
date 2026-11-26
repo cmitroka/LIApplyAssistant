@@ -50,7 +50,7 @@ describe('ApiService', () => {
       {
         jobTitle: 'Designer',
         company: 'Northstar',
-        location: 'Austin, TX',
+        location: 'Downingtown, PA',
         viewed: true,
         applied: false,
         ignored: false,
