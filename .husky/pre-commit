@@ -1,0 +1,6 @@
+cd web || exit 1
+if [ ! -x node_modules/.bin/lint-staged ]; then
+  echo "husky: dependencies are missing. Run npm install in web/ before committing."
+  exit 1
+fi
+npx lint-staged

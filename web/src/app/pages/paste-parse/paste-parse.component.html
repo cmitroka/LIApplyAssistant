@@ -9,9 +9,7 @@
       <h1>Paste &amp; Parse</h1>
       <p class="lede">Paste a job extract, review the parsed data, and edit any field.</p>
     </div>
-    <button type="button" class="btn btn--ghost" (click)="newPaste()">
-      New paste
-    </button>
+    <button type="button" class="btn btn--ghost" (click)="newPaste()">New paste</button>
   </header>
 
   @if (parseError()) {
@@ -72,9 +70,7 @@ You'd be a top applicant"
       </div>
     </section>
   } @else {
-    <button type="button" class="reopen-paste" (click)="openPastePanel()">
-      Show paste panel
-    </button>
+    <button type="button" class="reopen-paste" (click)="openPastePanel()">Show paste panel</button>
   }
 
   <section class="card preview-card" aria-labelledby="preview-heading">
@@ -87,8 +83,8 @@ You'd be a top applicant"
             @if (jobs().length === 0) {
               Parsed jobs will appear here.
             } @else {
-              {{ jobs().length }} job{{ jobs().length === 1 ? '' : 's' }} found
-              · {{ topApplicantCount() }} top applicant{{ topApplicantCount() === 1 ? '' : 's' }}
+              {{ jobs().length }} job{{ jobs().length === 1 ? '' : 's' }} found ·
+              {{ topApplicantCount() }} top applicant{{ topApplicantCount() === 1 ? '' : 's' }}
             }
           </p>
         </div>
