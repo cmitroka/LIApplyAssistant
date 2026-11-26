@@ -14,7 +14,10 @@ public sealed class JobRecord
     public string? CompensationText { get; set; }
     public string? CompSpecified { get; set; }
     public string? ResumeUsed { get; set; }
+    public bool Applied { get; set; }
     public DateTime? AppliedAt { get; set; }
+    public bool Ignored { get; set; }
+    public DateTime? IgnoredAt { get; set; }
     public string? RawPaste { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

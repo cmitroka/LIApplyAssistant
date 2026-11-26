@@ -11,7 +11,11 @@ export interface JobDto {
   compensationText?: string | null;
   compSpecified?: string | null;
   resumeUsed?: string | null;
+  applied: boolean;
   appliedAt?: string | null;
+  ignored: boolean;
+  ignoredAt?: string | null;
+  createdAt?: string | null;
   rawPaste?: string | null;
 }
 
@@ -23,6 +27,7 @@ export interface PreviewJob extends JobDto {
 export interface ParseResponse {
   jobs: JobDto[];
   count: number;
+  source?: 'html' | 'text';
 }
 
 export interface ImportResponse {
@@ -30,4 +35,21 @@ export interface ImportResponse {
   skipped: number;
   total: number;
   errors: { jobKey?: string; jobTitle?: string; error: string }[];
+}
+
+export interface JobsListResponse {
+  jobs: JobDto[];
+  count: number;
+}
+
+export interface AppliedToggleResponse {
+  jobKey: string;
+  applied: boolean;
+  appliedAt: string | null;
+}
+
+export interface IgnoredToggleResponse {
+  jobKey: string;
+  ignored: boolean;
+  ignoredAt: string | null;
 }

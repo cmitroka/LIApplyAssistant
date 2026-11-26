@@ -4,19 +4,19 @@ Shared SQLite job store (Azure Files) with a SQL relay API. Primary UI is the **
 
 ## What it does
 
-1. Paste LinkedIn-style job card text into **Paste & Parse**.
-2. Server-side parse extracts **Job Title**, **Company**, **Location**, **Viewed**, **Posted** text/date, **Top applicant**, and compensation when present.
+1. Paste LinkedIn job-search **HTML** (Save Page / outerHTML) into **Paste & Parse** — plain text still works as a fallback.
+2. Server-side parse finds `job-card-component-ref-{id}` cards and extracts **Job Title**, **Company**, **Location**, **Viewed**, **Posted**, **Top applicant**, compensation, and **Apply URL** (`/jobs/view/{id}`).
 3. Build a deterministic **JobKey** = alphanumeric-only from `Title + Company + Location` (primary key; first insert wins).
 4. Review/edit rows in the preview grid, check the ones to keep, click **Add row** to insert.
 5. Duplicates (same JobKey) are skipped; a modal reports how many were added vs skipped.
 
 ## Shared SQLite on Azure
 
-| Piece | Value |
-|---|---|
-| Storage account | `cjmpipelinefiles` |
-| File share | `pipeline-data` |
-| DB file | `cjm-apply.db` |
+| Piece                      | Value                        |
+| -------------------------- | ---------------------------- |
+| Storage account            | `cjmpipelinefiles`           |
+| File share                 | `pipeline-data`              |
+| DB file                    | `cjm-apply.db`               |
 | Path inside Container Apps | `/mnt/pipeline/cjm-apply.db` |
 
 Schema: `Sql/CreateSqlite.sql`. Local copy lives under `Data/cjm-apply.db`.
@@ -25,13 +25,16 @@ Schema: `Sql/CreateSqlite.sql`. Local copy lives under `Data/cjm-apply.db`.
 
 ## API (`CjmApplyApi`)
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /api/health` | Liveness + DB path |
-| `POST /api/parse` | Body `{ "text": "..." }` → `{ jobs, count }` |
-| `POST /api/jobs/import` | Body `{ "jobs": [ ... ] }` → `{ added, skipped, errors, total }` (`INSERT OR IGNORE`) |
-| `POST /api/sql` | Universal SQL relay `{ "sql", "parameters" }` |
-| Auth | Header `X-Api-Key` or `Authorization: Bearer …` (`CJM_APPLY_API_KEY`); empty key = open (local only — avoid with the SPA) |
+| Endpoint                                 | Purpose                                                                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/health`                        | Liveness + DB path                                                                                                        |
+| `POST /api/parse`                        | Body `{ "text": "..." }` → `{ jobs, count, source }` (`html` or `text`)                                                   |
+| `POST /api/jobs/import`                  | Body `{ "jobs": [ ... ] }` → `{ added, skipped, errors, total }` (`INSERT OR IGNORE`)                                     |
+| `GET /api/jobs`                          | List saved jobs (`?take=500`)                                                                                             |
+| `POST /api/jobs/{jobKey}/applied/toggle` | Toggle `Applied` + set/clear `AppliedAt`                                                                                  |
+| `POST /api/jobs/{jobKey}/ignored/toggle` | Toggle `Ignored` + set/clear `IgnoredAt`                                                                                  |
+| `POST /api/sql`                          | Universal SQL relay `{ "sql", "parameters" }`                                                                             |
+| Auth                                     | Header `X-Api-Key` or `Authorization: Bearer …` (`CJM_APPLY_API_KEY`); empty key = open (local only — avoid with the SPA) |
 
 CORS is allow-listed via `Cors:Origins` (Development defaults to `http://localhost:4200`). Production ships with an empty list (no browser CORS) unless you set origins explicitly. `/api/sql` is for trusted non-browser clients; do not put the API key in the SPA bundle.
 
@@ -67,16 +70,16 @@ Quality gates, CI, and the Azure Static Web Apps deploy are in [Engineering prac
 Routes:
 
 - `/` — Paste & Parse (ingest)
-- `/jobs` — Job Grid stub (behavior TBD)
+- `/jobs` — Job Grid (saved jobs, sort, Applied toggle)
 
 ## Solution layout
 
-| Project | Role |
-|---|---|
-| `CjmApply.Core` | Shared `JobRecord`, LinkedIn paste parser, JobKey builder |
-| `CjmApplyApi` | HTTP API (parse, import, SQL) |
-| `CjmApplyAssistant` | Windows Forms (optional) |
-| `web` | Angular JobGrid SPA |
+| Project             | Role                                                      |
+| ------------------- | --------------------------------------------------------- |
+| `CjmApply.Core`     | Shared `JobRecord`, LinkedIn paste parser, JobKey builder |
+| `CjmApplyApi`       | HTTP API (parse, import, SQL)                             |
+| `CjmApplyAssistant` | Windows Forms (optional)                                  |
+| `web`               | Angular JobGrid SPA                                       |
 
 ## Typical workflow
 

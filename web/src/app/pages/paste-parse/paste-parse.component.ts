@@ -51,6 +51,8 @@ export class PasteParseComponent {
   readonly charCount = computed(() => this.pasteText().length);
   readonly selectedCount = computed(() => this.jobs().filter((j) => j.selected).length);
   readonly topApplicantCount = computed(() => this.jobs().filter((j) => j.isTopApplicant).length);
+  readonly selectedCount = computed(() => this.jobs().filter((j) => j.selected).length);
+  readonly topApplicantCount = computed(() => this.jobs().filter((j) => j.isTopApplicant).length);
   readonly allSelected = computed(
     () => this.jobs().length > 0 && this.jobs().every((j) => j.selected),
   );
@@ -129,6 +131,7 @@ export class PasteParseComponent {
 
     const headers = [
       'JobTitle',
+      'ApplyUrl',
       'Company',
       'Location',
       'Viewed',
@@ -141,6 +144,7 @@ export class PasteParseComponent {
       ...rows.map((r) =>
         [
           r.jobTitle,
+          r.applyUrl,
           r.company,
           r.location,
           r.viewed ? 'Yes' : 'No',
@@ -153,7 +157,9 @@ export class PasteParseComponent {
       ),
     ];
 
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob([lines.join('\n')], {
+      type: 'text/csv;charset=utf-8',
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -186,7 +192,10 @@ export class PasteParseComponent {
       compensationText: j.compensationText,
       compSpecified: j.compSpecified,
       resumeUsed: j.resumeUsed,
+      applied: !!j.applied,
       appliedAt: j.appliedAt,
+      ignored: !!j.ignored,
+      ignoredAt: j.ignoredAt,
       rawPaste: j.rawPaste,
     }));
 
@@ -222,7 +231,11 @@ export class PasteParseComponent {
       compensationText: job.compensationText ?? '',
       compSpecified: job.compSpecified ?? '',
       resumeUsed: job.resumeUsed ?? '',
+      applied: !!job.applied,
       appliedAt: job.appliedAt ?? '',
+      ignored: !!job.ignored,
+      ignoredAt: job.ignoredAt ?? '',
+      createdAt: job.createdAt ?? '',
       rawPaste: job.rawPaste ?? '',
     };
   }

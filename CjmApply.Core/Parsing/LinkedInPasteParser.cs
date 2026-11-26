@@ -25,6 +25,10 @@ public static partial class LinkedInPasteParser
         if (string.IsNullOrWhiteSpace(paste))
             return [];
 
+        // LinkedIn "Save Page" / outerHTML pastes are much more reliable than plain text.
+        if (LinkedInHtmlJobParser.LooksLikeHtml(paste))
+            return LinkedInHtmlJobParser.Parse(paste);
+
         var normalized = paste.Replace("\r\n", "\n").Replace('\r', '\n');
         var blocks = SplitIntoBlocks(normalized);
         var results = new List<JobRecord>();

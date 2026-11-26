@@ -10,6 +10,10 @@ web/node_modules/
 web/dist/
 web/.angular/
 
+## Local scratch
+ParseProbe/
+Samples/_card*.html
+
 ## Secrets / local config
 .api-key.local
 *.local

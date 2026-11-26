@@ -1,12 +1,186 @@
 <div class="page">
-  <nav class="crumb" aria-label="Application navigation">
-    <span>JOBGRID</span>
-    <span class="crumb__sep">/</span>
-    <span>JOB GRID</span>
-  </nav>
-  <h1>Job Grid</h1>
-  <p class="lede">
-    Saved jobs will live here. Layout and filters come next — for now, ingest jobs via
-    <a routerLink="/">Paste &amp; Parse</a>.
-  </p>
+  <header class="page-header">
+    <div class="page-header__copy">
+      <nav class="crumb" aria-label="Application navigation">
+        <span>JOBGRID</span>
+        <span class="crumb__sep">/</span>
+        <span>JOB GRID</span>
+      </nav>
+      <h1>Job Grid</h1>
+      <p class="lede">
+        Explore jobs that are not applied and not ignored. Toggle Applied / Ignored as you work.
+      </p>
+    </div>
+    <button type="button" class="btn btn--ghost" (click)="reload()" [disabled]="loading()">
+      {{ loading() ? 'Refreshing…' : 'Refresh' }}
+    </button>
+  </header>
+
+  @if (error()) {
+    <div class="banner banner--error" role="alert">{{ error() }}</div>
+  }
+
+  <section class="card" aria-labelledby="grid-heading">
+    <div class="card__head card__head--stack">
+      <div class="card__title-row">
+        <span class="step">1</span>
+        <div>
+          <h2 id="grid-heading">Saved jobs</h2>
+          <p class="card__sub">
+            @if (loading() && jobs().length === 0) {
+              Loading…
+            } @else if (jobs().length === 0) {
+              No jobs saved yet. Import from Paste &amp; Parse.
+            } @else {
+              {{ exploreCount() }} to explore · {{ appliedCount() }} applied ·
+              {{ ignoredCount() }} ignored · {{ jobs().length }} total
+            }
+          </p>
+        </div>
+      </div>
+
+      <div class="toolbar" role="group" aria-label="Job filter">
+        <button
+          type="button"
+          class="btn btn--compact"
+          [class.btn--primary]="filterMode() === 'explore'"
+          [class.btn--ghost]="filterMode() !== 'explore'"
+          (click)="setFilter('explore')"
+        >
+          To explore
+        </button>
+        <button
+          type="button"
+          class="btn btn--compact"
+          [class.btn--primary]="filterMode() === 'all'"
+          [class.btn--ghost]="filterMode() !== 'all'"
+          (click)="setFilter('all')"
+        >
+          All
+        </button>
+      </div>
+    </div>
+
+    @if (!loading() && jobs().length === 0) {
+      <div class="empty">
+        <p>Nothing in the database yet. Use <strong>Paste &amp; Parse</strong> to add jobs.</p>
+      </div>
+    } @else if (!loading() && sortedJobs().length === 0) {
+      <div class="empty">
+        <p>No jobs match this filter. Switch to <strong>All</strong> or clear Applied/Ignored.</p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>
+                <button type="button" class="sort-btn" (click)="sortBy('jobTitle')">
+                  Job title{{ sortIndicator('jobTitle') }}
+                </button>
+              </th>
+              <th>Link</th>
+              <th>
+                <button type="button" class="sort-btn" (click)="sortBy('company')">
+                  Poster / company{{ sortIndicator('company') }}
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="sortBy('location')">
+                  Location{{ sortIndicator('location') }}
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="sortBy('age')">
+                  Age{{ sortIndicator('age') }}
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="sortBy('postedDateText')">
+                  Posted{{ sortIndicator('postedDateText') }}
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="sortBy('isTopApplicant')">
+                  Top applicant{{ sortIndicator('isTopApplicant') }}
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="sortBy('compensationText')">
+                  Compensation{{ sortIndicator('compensationText') }}
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="sortBy('applied')">
+                  Applied{{ sortIndicator('applied') }}
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="sortBy('ignored')">
+                  Ignored{{ sortIndicator('ignored') }}
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (job of sortedJobs(); track job.jobKey) {
+              <tr [class.is-applied]="job.applied" [class.is-ignored]="job.ignored">
+                <td>{{ job.jobTitle || '—' }}</td>
+                <td class="col-link">
+                  @if (job.applyUrl) {
+                    <a
+                      class="view-link"
+                      [href]="job.applyUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      [attr.aria-label]="'View ' + (job.jobTitle || 'job') + ' on LinkedIn'"
+                      >View</a
+                    >
+                  } @else {
+                    <span class="view-link view-link--missing">—</span>
+                  }
+                </td>
+                <td>{{ job.company || '—' }}</td>
+                <td>{{ job.location || '—' }}</td>
+                <td class="col-age" [attr.title]="job.createdAt || ''">
+                  {{ ageLabel(job) }}
+                </td>
+                <td>{{ job.postedDateText || '—' }}</td>
+                <td>{{ job.isTopApplicant ? 'Yes' : 'No' }}</td>
+                <td>{{ job.compensationText || '—' }}</td>
+                <td class="col-flag">
+                  <button
+                    type="button"
+                    class="btn btn--compact"
+                    [class.btn--primary]="job.applied"
+                    [class.btn--ghost]="!job.applied"
+                    [disabled]="togglingKey() === job.jobKey"
+                    (click)="toggleApplied(job)"
+                    [attr.aria-pressed]="job.applied"
+                    [title]="job.appliedAt ? 'Applied at ' + job.appliedAt : 'Not applied'"
+                  >
+                    {{ job.applied ? 'Applied' : 'Mark applied' }}
+                  </button>
+                </td>
+                <td class="col-flag">
+                  <button
+                    type="button"
+                    class="btn btn--compact"
+                    [class.btn--muted]="job.ignored"
+                    [class.btn--ghost]="!job.ignored"
+                    [disabled]="togglingKey() === job.jobKey"
+                    (click)="toggleIgnored(job)"
+                    [attr.aria-pressed]="job.ignored"
+                    [title]="job.ignoredAt ? 'Ignored at ' + job.ignoredAt : 'Not ignored'"
+                  >
+                    {{ job.ignored ? 'Ignored' : 'Ignore' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
 </div>

@@ -23,7 +23,9 @@
           <span class="step">1</span>
           <div>
             <h2 id="paste-heading">Paste your data extract</h2>
-            <p class="card__sub">Paste job listings (separate cards with a line of ---).</p>
+            <p class="card__sub">
+              Prefer LinkedIn page HTML; plain text cards still work as a fallback.
+            </p>
           </div>
         </div>
         <button
@@ -41,15 +43,9 @@
         id="job-extract"
         class="paste-area"
         rows="12"
-        placeholder="Paste your job extract here...
+        placeholder="Paste LinkedIn job search HTML here (Save Page / copy outerHTML), or plain text cards.
 
-Example:
-Senior Product Designer
-Northstar Labs
-Austin, TX
-Viewed
-Posted 2 days ago
-You'd be a top applicant"
+HTML is preferred — it yields job URLs and cleaner fields."
         [ngModel]="pasteText()"
         (ngModelChange)="onPasteInput($event)"
       ></textarea>
@@ -121,7 +117,10 @@ You'd be a top applicant"
 
     @if (jobs().length === 0) {
       <div class="empty">
-        <p>No parsed jobs yet. Paste an extract above and click <strong>Parse extract</strong>.</p>
+        <p>
+          No parsed jobs yet. Paste an extract above and click
+          <strong>Parse extract</strong>.
+        </p>
       </div>
     } @else {
       <div class="table-wrap">
@@ -137,6 +136,7 @@ You'd be a top applicant"
                 />
               </th>
               <th>Job title</th>
+              <th>Link</th>
               <th>Poster / company</th>
               <th>Location</th>
               <th>Viewed</th>
@@ -164,6 +164,20 @@ You'd be a top applicant"
                     aria-label="Job title"
                     placeholder="Enter job title"
                   />
+                </td>
+                <td class="col-link">
+                  @if (job.applyUrl) {
+                    <a
+                      class="view-link"
+                      [href]="job.applyUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      [attr.aria-label]="'View ' + (job.jobTitle || 'job') + ' on LinkedIn'"
+                      >View</a
+                    >
+                  } @else {
+                    <span class="view-link view-link--missing">—</span>
+                  }
                 </td>
                 <td>
                   <input
