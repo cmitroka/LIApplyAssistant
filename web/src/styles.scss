@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@450;500;600;700;800&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@450;500;600;700;800&display=swap');
 
 :root {
   --brand: #5b5bd6;
@@ -26,7 +26,7 @@ body {
 }
 
 body {
-  font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   background:
     radial-gradient(1200px 500px at 10% -10%, #e8e8ff 0%, transparent 55%),
     radial-gradient(900px 400px at 100% 0%, #f0f4ff 0%, transparent 50%), var(--bg);

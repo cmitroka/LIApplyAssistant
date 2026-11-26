@@ -39,12 +39,8 @@ export class JobGridComponent implements OnInit {
   readonly exploreCount = computed(
     () => this.jobs().filter((j) => !j.applied && !j.ignored).length,
   );
-  readonly appliedCount = computed(
-    () => this.jobs().filter((j) => j.applied).length,
-  );
-  readonly ignoredCount = computed(
-    () => this.jobs().filter((j) => j.ignored).length,
-  );
+  readonly appliedCount = computed(() => this.jobs().filter((j) => j.applied).length);
+  readonly ignoredCount = computed(() => this.jobs().filter((j) => j.ignored).length);
 
   readonly visibleJobs = computed(() => {
     const mode = this.filterMode();
@@ -99,9 +95,7 @@ export class JobGridComponent implements OnInit {
       return;
     }
     this.sortKey.set(key);
-    this.sortAsc.set(
-      key === 'jobTitle' || key === 'company' || key === 'location',
-    );
+    this.sortAsc.set(key === 'jobTitle' || key === 'company' || key === 'location');
   }
 
   sortIndicator(key: SortKey): string {

@@ -8,17 +8,11 @@
       </nav>
       <h1>Job Grid</h1>
       <p class="lede">
-        Explore jobs that are not applied and not ignored. Toggle Applied /
-        Ignored as you work.
+        Explore jobs that are not applied and not ignored. Toggle Applied / Ignored as you work.
       </p>
     </div>
-    <button
-      type="button"
-      class="btn btn--ghost"
-      (click)="reload()"
-      [disabled]="loading()"
-    >
-      {{ loading() ? "Refreshing…" : "Refresh" }}
+    <button type="button" class="btn btn--ghost" (click)="reload()" [disabled]="loading()">
+      {{ loading() ? 'Refreshing…' : 'Refresh' }}
     </button>
   </header>
 
@@ -69,17 +63,11 @@
 
     @if (!loading() && jobs().length === 0) {
       <div class="empty">
-        <p>
-          Nothing in the database yet. Use <strong>Paste &amp; Parse</strong> to
-          add jobs.
-        </p>
+        <p>Nothing in the database yet. Use <strong>Paste &amp; Parse</strong> to add jobs.</p>
       </div>
     } @else if (!loading() && sortedJobs().length === 0) {
       <div class="empty">
-        <p>
-          No jobs match this filter. Switch to <strong>All</strong> or clear
-          Applied/Ignored.
-        </p>
+        <p>No jobs match this filter. Switch to <strong>All</strong> or clear Applied/Ignored.</p>
       </div>
     } @else {
       <div class="table-wrap">
@@ -87,92 +75,57 @@
           <thead>
             <tr>
               <th>
-                <button
-                  type="button"
-                  class="sort-btn"
-                  (click)="sortBy('jobTitle')"
-                >
-                  Job title{{ sortIndicator("jobTitle") }}
+                <button type="button" class="sort-btn" (click)="sortBy('jobTitle')">
+                  Job title{{ sortIndicator('jobTitle') }}
                 </button>
               </th>
               <th>Link</th>
               <th>
-                <button
-                  type="button"
-                  class="sort-btn"
-                  (click)="sortBy('company')"
-                >
-                  Poster / company{{ sortIndicator("company") }}
+                <button type="button" class="sort-btn" (click)="sortBy('company')">
+                  Poster / company{{ sortIndicator('company') }}
                 </button>
               </th>
               <th>
-                <button
-                  type="button"
-                  class="sort-btn"
-                  (click)="sortBy('location')"
-                >
-                  Location{{ sortIndicator("location") }}
+                <button type="button" class="sort-btn" (click)="sortBy('location')">
+                  Location{{ sortIndicator('location') }}
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="sortBy('age')">
-                  Age{{ sortIndicator("age") }}
+                  Age{{ sortIndicator('age') }}
                 </button>
               </th>
               <th>
-                <button
-                  type="button"
-                  class="sort-btn"
-                  (click)="sortBy('postedDateText')"
-                >
-                  Posted{{ sortIndicator("postedDateText") }}
+                <button type="button" class="sort-btn" (click)="sortBy('postedDateText')">
+                  Posted{{ sortIndicator('postedDateText') }}
                 </button>
               </th>
               <th>
-                <button
-                  type="button"
-                  class="sort-btn"
-                  (click)="sortBy('isTopApplicant')"
-                >
-                  Top applicant{{ sortIndicator("isTopApplicant") }}
+                <button type="button" class="sort-btn" (click)="sortBy('isTopApplicant')">
+                  Top applicant{{ sortIndicator('isTopApplicant') }}
                 </button>
               </th>
               <th>
-                <button
-                  type="button"
-                  class="sort-btn"
-                  (click)="sortBy('compensationText')"
-                >
-                  Compensation{{ sortIndicator("compensationText") }}
+                <button type="button" class="sort-btn" (click)="sortBy('compensationText')">
+                  Compensation{{ sortIndicator('compensationText') }}
                 </button>
               </th>
               <th>
-                <button
-                  type="button"
-                  class="sort-btn"
-                  (click)="sortBy('applied')"
-                >
-                  Applied{{ sortIndicator("applied") }}
+                <button type="button" class="sort-btn" (click)="sortBy('applied')">
+                  Applied{{ sortIndicator('applied') }}
                 </button>
               </th>
               <th>
-                <button
-                  type="button"
-                  class="sort-btn"
-                  (click)="sortBy('ignored')"
-                >
-                  Ignored{{ sortIndicator("ignored") }}
+                <button type="button" class="sort-btn" (click)="sortBy('ignored')">
+                  Ignored{{ sortIndicator('ignored') }}
                 </button>
               </th>
             </tr>
           </thead>
           <tbody>
             @for (job of sortedJobs(); track job.jobKey) {
-              <tr
-                [class.is-applied]="job.applied"
-                [class.is-ignored]="job.ignored"
-              >
-                <td>{{ job.jobTitle || "—" }}</td>
+              <tr [class.is-applied]="job.applied" [class.is-ignored]="job.ignored">
+                <td>{{ job.jobTitle || '—' }}</td>
                 <td class="col-link">
                   @if (job.applyUrl) {
                     <a
@@ -180,23 +133,21 @@
                       [href]="job.applyUrl"
                       target="_blank"
                       rel="noopener noreferrer"
-                      [attr.aria-label]="
-                        'View ' + (job.jobTitle || 'job') + ' on LinkedIn'
-                      "
+                      [attr.aria-label]="'View ' + (job.jobTitle || 'job') + ' on LinkedIn'"
                       >View</a
                     >
                   } @else {
                     <span class="view-link view-link--missing">—</span>
                   }
                 </td>
-                <td>{{ job.company || "—" }}</td>
-                <td>{{ job.location || "—" }}</td>
+                <td>{{ job.company || '—' }}</td>
+                <td>{{ job.location || '—' }}</td>
                 <td class="col-age" [attr.title]="job.createdAt || ''">
                   {{ ageLabel(job) }}
                 </td>
-                <td>{{ job.postedDateText || "—" }}</td>
-                <td>{{ job.isTopApplicant ? "Yes" : "No" }}</td>
-                <td>{{ job.compensationText || "—" }}</td>
+                <td>{{ job.postedDateText || '—' }}</td>
+                <td>{{ job.isTopApplicant ? 'Yes' : 'No' }}</td>
+                <td>{{ job.compensationText || '—' }}</td>
                 <td class="col-flag">
                   <button
                     type="button"
@@ -206,13 +157,9 @@
                     [disabled]="togglingKey() === job.jobKey"
                     (click)="toggleApplied(job)"
                     [attr.aria-pressed]="job.applied"
-                    [title]="
-                      job.appliedAt
-                        ? 'Applied at ' + job.appliedAt
-                        : 'Not applied'
-                    "
+                    [title]="job.appliedAt ? 'Applied at ' + job.appliedAt : 'Not applied'"
                   >
-                    {{ job.applied ? "Applied" : "Mark applied" }}
+                    {{ job.applied ? 'Applied' : 'Mark applied' }}
                   </button>
                 </td>
                 <td class="col-flag">
@@ -224,13 +171,9 @@
                     [disabled]="togglingKey() === job.jobKey"
                     (click)="toggleIgnored(job)"
                     [attr.aria-pressed]="job.ignored"
-                    [title]="
-                      job.ignoredAt
-                        ? 'Ignored at ' + job.ignoredAt
-                        : 'Not ignored'
-                    "
+                    [title]="job.ignoredAt ? 'Ignored at ' + job.ignoredAt : 'Not ignored'"
                   >
-                    {{ job.ignored ? "Ignored" : "Ignore" }}
+                    {{ job.ignored ? 'Ignored' : 'Ignore' }}
                   </button>
                 </td>
               </tr>
