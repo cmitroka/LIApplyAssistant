@@ -131,6 +131,7 @@ export class PasteParseComponent {
 
     const headers = [
       'JobTitle',
+      'ApplyUrl',
       'Company',
       'Location',
       'Viewed',
@@ -143,6 +144,7 @@ export class PasteParseComponent {
       ...rows.map((r) =>
         [
           r.jobTitle,
+          r.applyUrl,
           r.company,
           r.location,
           r.viewed ? 'Yes' : 'No',
@@ -188,7 +190,10 @@ export class PasteParseComponent {
       compensationText: j.compensationText,
       compSpecified: j.compSpecified,
       resumeUsed: j.resumeUsed,
+      applied: !!j.applied,
       appliedAt: j.appliedAt,
+      ignored: !!j.ignored,
+      ignoredAt: j.ignoredAt,
       rawPaste: j.rawPaste,
     }));
 
@@ -224,7 +229,11 @@ export class PasteParseComponent {
       compensationText: job.compensationText ?? '',
       compSpecified: job.compSpecified ?? '',
       resumeUsed: job.resumeUsed ?? '',
+      applied: !!job.applied,
       appliedAt: job.appliedAt ?? '',
+      ignored: !!job.ignored,
+      ignoredAt: job.ignoredAt ?? '',
+      createdAt: job.createdAt ?? '',
       rawPaste: job.rawPaste ?? '',
     };
   }

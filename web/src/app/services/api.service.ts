@@ -2,7 +2,14 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { ImportResponse, JobDto, ParseResponse } from '../models/job';
+import {
+  AppliedToggleResponse,
+  IgnoredToggleResponse,
+  ImportResponse,
+  JobDto,
+  JobsListResponse,
+  ParseResponse,
+} from '../models/job';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -21,6 +28,29 @@ export class ApiService {
     return this.http.post<ImportResponse>(
       `${this.baseUrl}/api/jobs/import`,
       { jobs },
+      { headers: this.headers() },
+    );
+  }
+
+  listJobs(take = 500): Observable<JobsListResponse> {
+    return this.http.get<JobsListResponse>(`${this.baseUrl}/api/jobs`, {
+      headers: this.headers(),
+      params: { take: String(take) },
+    });
+  }
+
+  toggleApplied(jobKey: string): Observable<AppliedToggleResponse> {
+    return this.http.post<AppliedToggleResponse>(
+      `${this.baseUrl}/api/jobs/${encodeURIComponent(jobKey)}/applied/toggle`,
+      {},
+      { headers: this.headers() },
+    );
+  }
+
+  toggleIgnored(jobKey: string): Observable<IgnoredToggleResponse> {
+    return this.http.post<IgnoredToggleResponse>(
+      `${this.baseUrl}/api/jobs/${encodeURIComponent(jobKey)}/ignored/toggle`,
+      {},
       { headers: this.headers() },
     );
   }

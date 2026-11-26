@@ -52,9 +52,11 @@ api.MapPost("/parse", (ParseRequest request, SqliteOptions options, HttpRequest 
     if (!IsAuthorized(http, options.ApiKey))
         return Results.Unauthorized();
 
-    var jobs = LinkedInPasteParser.Parse(request.Text ?? "");
+    var text = request.Text ?? "";
+    var source = LinkedInHtmlJobParser.LooksLikeHtml(text) ? "html" : "text";
+    var jobs = LinkedInPasteParser.Parse(text);
     var dto = jobs.Select(ToDto).ToList();
-    return Results.Ok(new { jobs = dto, count = dto.Count });
+    return Results.Ok(new { jobs = dto, count = dto.Count, source });
 });
 
 api.MapPost("/jobs/import", async (ImportRequest request, SqliteOptions options, HttpRequest http) =>
@@ -67,6 +69,44 @@ api.MapPost("/jobs/import", async (ImportRequest request, SqliteOptions options,
 
     var result = await ImportJobsAsync(options.DbPath, request.Jobs);
     return Results.Ok(result);
+});
+
+api.MapGet("/jobs", async (SqliteOptions options, HttpRequest http, int? take) =>
+{
+    if (!IsAuthorized(http, options.ApiKey))
+        return Results.Unauthorized();
+
+    var limit = Math.Clamp(take ?? 500, 1, 2000);
+    var jobs = await ListJobsAsync(options.DbPath, limit);
+    return Results.Ok(new { jobs, count = jobs.Count });
+});
+
+api.MapPost("/jobs/{jobKey}/applied/toggle", async (string jobKey, SqliteOptions options, HttpRequest http) =>
+{
+    if (!IsAuthorized(http, options.ApiKey))
+        return Results.Unauthorized();
+
+    if (string.IsNullOrWhiteSpace(jobKey))
+        return Results.BadRequest(new { error = "jobKey is required" });
+
+    var result = await ToggleFlagAsync(options.DbPath, jobKey, "Applied", "AppliedAt");
+    return result is null
+        ? Results.NotFound(new { error = "job not found" })
+        : Results.Ok(new { jobKey, applied = result.Value, appliedAt = result.At });
+});
+
+api.MapPost("/jobs/{jobKey}/ignored/toggle", async (string jobKey, SqliteOptions options, HttpRequest http) =>
+{
+    if (!IsAuthorized(http, options.ApiKey))
+        return Results.Unauthorized();
+
+    if (string.IsNullOrWhiteSpace(jobKey))
+        return Results.BadRequest(new { error = "jobKey is required" });
+
+    var result = await ToggleFlagAsync(options.DbPath, jobKey, "Ignored", "IgnoredAt");
+    return result is null
+        ? Results.NotFound(new { error = "job not found" })
+        : Results.Ok(new { jobKey, ignored = result.Value, ignoredAt = result.At });
 });
 
 api.MapPost("/sql", async (SqlRequest request, SqliteOptions options, HttpRequest http) =>
@@ -104,9 +144,111 @@ static JobDto ToDto(JobRecord job) => new()
     CompensationText = job.CompensationText,
     CompSpecified = job.CompSpecified,
     ResumeUsed = job.ResumeUsed,
+    Applied = job.Applied,
     AppliedAt = job.AppliedAt?.ToString("o"),
+    Ignored = job.Ignored,
+    IgnoredAt = job.IgnoredAt?.ToString("o"),
+    CreatedAt = job.CreatedAt == default ? null : job.CreatedAt.ToString("o"),
     RawPaste = job.RawPaste,
 };
+
+static async Task<List<JobDto>> ListJobsAsync(string dbPath, int take)
+{
+    await using var connection = new SqliteConnection($"Data Source={dbPath}");
+    await connection.OpenAsync();
+
+    await using var command = connection.CreateCommand();
+    command.CommandText = """
+        SELECT JobKey, JobTitle, Company, Location, Viewed, PostedDateText, PostedDate,
+               IsTopApplicant, ApplyUrl, CompensationText, CompSpecified, ResumeUsed,
+               Applied, AppliedAt, Ignored, IgnoredAt, RawPaste, CreatedAt, UpdatedAt
+        FROM Jobs
+        ORDER BY datetime(UpdatedAt) DESC
+        LIMIT @Take;
+        """;
+    command.Parameters.AddWithValue("@Take", take);
+
+    var list = new List<JobDto>();
+    await using var reader = await command.ExecuteReaderAsync();
+    while (await reader.ReadAsync())
+        list.Add(MapJobDto(reader));
+
+    return list;
+}
+
+static async Task<FlagToggleResult?> ToggleFlagAsync(
+    string dbPath,
+    string jobKey,
+    string flagColumn,
+    string atColumn)
+{
+    // Column names are internal constants only (Applied/Ignored) — never from request input.
+    await using var connection = new SqliteConnection($"Data Source={dbPath}");
+    await connection.OpenAsync();
+
+    await using var read = connection.CreateCommand();
+    read.CommandText = $"SELECT {flagColumn} FROM Jobs WHERE JobKey = @JobKey;";
+    read.Parameters.AddWithValue("@JobKey", jobKey);
+    var existing = await read.ExecuteScalarAsync();
+    if (existing is null || existing is DBNull)
+        return null;
+
+    var next = Convert.ToInt64(existing) == 0;
+    var now = DateTime.UtcNow.ToString("o");
+
+    await using var write = connection.CreateCommand();
+    write.CommandText = $"""
+        UPDATE Jobs
+        SET {flagColumn} = @Flag,
+            {atColumn} = @At,
+            UpdatedAt = @UpdatedAt
+        WHERE JobKey = @JobKey;
+        """;
+    write.Parameters.AddWithValue("@Flag", next ? 1 : 0);
+    write.Parameters.AddWithValue("@At", next ? now : DBNull.Value);
+    write.Parameters.AddWithValue("@UpdatedAt", now);
+    write.Parameters.AddWithValue("@JobKey", jobKey);
+    await write.ExecuteNonQueryAsync();
+
+    return new FlagToggleResult(next, next ? now : null);
+}
+
+static JobDto MapJobDto(SqliteDataReader reader)
+{
+    DateTime? ParseDto(object? value)
+    {
+        if (value is null || value is DBNull) return null;
+        return DateTime.TryParse(Convert.ToString(value), out var dt) ? dt : null;
+    }
+
+    bool ReadBool(string column)
+    {
+        var ordinal = reader.GetOrdinal(column);
+        return !reader.IsDBNull(ordinal) && Convert.ToInt64(reader.GetValue(ordinal)) != 0;
+    }
+
+    return new JobDto
+    {
+        JobKey = reader["JobKey"]?.ToString(),
+        JobTitle = reader["JobTitle"]?.ToString(),
+        Company = reader["Company"]?.ToString(),
+        Location = reader["Location"] is DBNull ? null : reader["Location"]?.ToString(),
+        Viewed = Convert.ToInt64(reader["Viewed"]) != 0,
+        PostedDateText = reader["PostedDateText"] is DBNull ? null : reader["PostedDateText"]?.ToString(),
+        PostedDate = reader["PostedDate"] is DBNull ? null : reader["PostedDate"]?.ToString(),
+        IsTopApplicant = Convert.ToInt64(reader["IsTopApplicant"]) != 0,
+        ApplyUrl = reader["ApplyUrl"] is DBNull ? null : reader["ApplyUrl"]?.ToString(),
+        CompensationText = reader["CompensationText"] is DBNull ? null : reader["CompensationText"]?.ToString(),
+        CompSpecified = reader["CompSpecified"] is DBNull ? null : reader["CompSpecified"]?.ToString(),
+        ResumeUsed = reader["ResumeUsed"] is DBNull ? null : reader["ResumeUsed"]?.ToString(),
+        Applied = ReadBool("Applied"),
+        AppliedAt = ParseDto(reader["AppliedAt"])?.ToString("o"),
+        Ignored = ReadBool("Ignored"),
+        IgnoredAt = ParseDto(reader["IgnoredAt"])?.ToString("o"),
+        CreatedAt = ParseDto(reader["CreatedAt"])?.ToString("o"),
+        RawPaste = reader["RawPaste"] is DBNull ? null : reader["RawPaste"]?.ToString(),
+    };
+}
 
 static async Task<object> ImportJobsAsync(string dbPath, List<JobDto?> jobs)
 {
@@ -159,15 +301,17 @@ static async Task<object> ImportJobsAsync(string dbPath, List<JobDto?> jobs)
                 INSERT OR IGNORE INTO Jobs (
                     JobKey, JobTitle, Company, Location, Viewed, PostedDateText, PostedDate,
                     IsTopApplicant, ApplyUrl, CompensationText, CompSpecified, ResumeUsed,
-                    AppliedAt, RawPaste, CreatedAt, UpdatedAt
+                    Applied, AppliedAt, Ignored, IgnoredAt, RawPaste, CreatedAt, UpdatedAt
                 ) VALUES (
                     @JobKey, @JobTitle, @Company, @Location, @Viewed, @PostedDateText, @PostedDate,
                     @IsTopApplicant, @ApplyUrl, @CompensationText, @CompSpecified, @ResumeUsed,
-                    @AppliedAt, @RawPaste, @Now, @Now
+                    @Applied, @AppliedAt, @Ignored, @IgnoredAt, @RawPaste, @Now, @Now
                 );
                 """;
 
             var now = DateTime.UtcNow.ToString("o");
+            var applied = job.Applied || !string.IsNullOrWhiteSpace(job.AppliedAt);
+            var ignored = job.Ignored || !string.IsNullOrWhiteSpace(job.IgnoredAt);
             command.Parameters.AddWithValue("@JobKey", jobKey);
             command.Parameters.AddWithValue("@JobTitle", title);
             command.Parameters.AddWithValue("@Company", company);
@@ -180,7 +324,14 @@ static async Task<object> ImportJobsAsync(string dbPath, List<JobDto?> jobs)
             command.Parameters.AddWithValue("@CompensationText", (object?)job.CompensationText ?? DBNull.Value);
             command.Parameters.AddWithValue("@CompSpecified", (object?)job.CompSpecified ?? DBNull.Value);
             command.Parameters.AddWithValue("@ResumeUsed", (object?)job.ResumeUsed ?? DBNull.Value);
-            command.Parameters.AddWithValue("@AppliedAt", (object?)job.AppliedAt ?? DBNull.Value);
+            command.Parameters.AddWithValue("@Applied", applied ? 1 : 0);
+            command.Parameters.AddWithValue("@AppliedAt", applied
+                ? (object?)(string.IsNullOrWhiteSpace(job.AppliedAt) ? now : job.AppliedAt)
+                : DBNull.Value);
+            command.Parameters.AddWithValue("@Ignored", ignored ? 1 : 0);
+            command.Parameters.AddWithValue("@IgnoredAt", ignored
+                ? (object?)(string.IsNullOrWhiteSpace(job.IgnoredAt) ? now : job.IgnoredAt)
+                : DBNull.Value);
             command.Parameters.AddWithValue("@RawPaste", (object?)job.RawPaste ?? DBNull.Value);
             command.Parameters.AddWithValue("@Now", now);
 
@@ -257,13 +408,37 @@ static void EnsureDatabase(string dbPath)
             CompensationText  TEXT NULL,
             CompSpecified     TEXT NULL,
             ResumeUsed        TEXT NULL,
+            Applied           INTEGER NOT NULL DEFAULT 0,
             AppliedAt         TEXT NULL,
+            Ignored           INTEGER NOT NULL DEFAULT 0,
+            IgnoredAt         TEXT NULL,
             RawPaste          TEXT NULL,
             CreatedAt         TEXT NOT NULL,
             UpdatedAt         TEXT NOT NULL
         );
         """;
     command.ExecuteNonQuery();
+
+    EnsureColumn(connection, "Applied", "INTEGER NOT NULL DEFAULT 0");
+    EnsureColumn(connection, "Ignored", "INTEGER NOT NULL DEFAULT 0");
+    EnsureColumn(connection, "IgnoredAt", "TEXT NULL");
+}
+
+static void EnsureColumn(SqliteConnection connection, string columnName, string columnDef)
+{
+    using var check = connection.CreateCommand();
+    check.CommandText = "PRAGMA table_info(Jobs);";
+    using var reader = check.ExecuteReader();
+    while (reader.Read())
+    {
+        if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+            return;
+    }
+
+    reader.Close();
+    using var alter = connection.CreateCommand();
+    alter.CommandText = $"ALTER TABLE Jobs ADD COLUMN {columnName} {columnDef};";
+    alter.ExecuteNonQuery();
 }
 
 static async Task<object> ExecuteSqlAsync(
@@ -394,6 +569,8 @@ static List<string> SplitStatements(string sql)
     return list.Count > 0 ? list : [sql.Trim()];
 }
 
+internal sealed record FlagToggleResult(bool Value, string? At);
+
 internal sealed record SqliteOptions(string DbPath, string ApiKey);
 
 internal sealed class SqlRequest
@@ -426,6 +603,10 @@ internal sealed class JobDto
     public string? CompensationText { get; set; }
     public string? CompSpecified { get; set; }
     public string? ResumeUsed { get; set; }
+    public bool Applied { get; set; }
     public string? AppliedAt { get; set; }
+    public bool Ignored { get; set; }
+    public string? IgnoredAt { get; set; }
+    public string? CreatedAt { get; set; }
     public string? RawPaste { get; set; }
 }

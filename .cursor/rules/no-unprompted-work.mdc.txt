@@ -1,0 +1,7 @@
+---
+description: No unprompted agent work
+alwaysApply: true
+---
+- After opening or updating a PR, stop. Do not watch CI, check runs, CodeQL, CodeRabbit, or review comments.
+- Never act on CI or review events unless I explicitly ask.
+- Do not start follow-up work on your own. Report what you did and wait for my next instruction.

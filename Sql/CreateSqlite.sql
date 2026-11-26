@@ -12,7 +12,10 @@ CREATE TABLE IF NOT EXISTS Jobs (
     CompensationText  TEXT NULL,
     CompSpecified     TEXT NULL,
     ResumeUsed        TEXT NULL,
+    Applied           INTEGER NOT NULL DEFAULT 0,
     AppliedAt         TEXT NULL,
+    Ignored           INTEGER NOT NULL DEFAULT 0,
+    IgnoredAt         TEXT NULL,
     RawPaste          TEXT NULL,
     CreatedAt         TEXT NOT NULL,
     UpdatedAt         TEXT NOT NULL

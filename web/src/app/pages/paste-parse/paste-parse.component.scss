@@ -223,6 +223,26 @@
   text-align: center;
 }
 
+.col-link {
+  width: 4.5rem;
+  white-space: nowrap;
+}
+
+.view-link {
+  color: var(--brand);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.view-link:hover {
+  text-decoration: underline;
+}
+
+.view-link--missing {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .cell-input,
 .cell-select {
   width: 100%;
