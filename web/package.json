@@ -29,7 +29,7 @@
     "*.{js,cjs,mjs,json,md}": "prettier --write"
   },
   "dependencies": {
-    "@angular/common": "^19.2.0",
+    "@angular/common": "^22.3.0",
     "@angular/compiler": "^19.2.0",
     "@angular/core": "^19.2.0",
     "@angular/forms": "^19.2.0",
