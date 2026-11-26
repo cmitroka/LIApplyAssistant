@@ -12,11 +12,11 @@ Shared SQLite job store (Azure Files) with a SQL relay API. Primary UI is the **
 
 ## Shared SQLite on Azure
 
-| Piece | Value |
-|---|---|
-| Storage account | `cjmpipelinefiles` |
-| File share | `pipeline-data` |
-| DB file | `cjm-apply.db` |
+| Piece                      | Value                        |
+| -------------------------- | ---------------------------- |
+| Storage account            | `cjmpipelinefiles`           |
+| File share                 | `pipeline-data`              |
+| DB file                    | `cjm-apply.db`               |
 | Path inside Container Apps | `/mnt/pipeline/cjm-apply.db` |
 
 Schema: `Sql/CreateSqlite.sql`. Local copy lives under `Data/cjm-apply.db`.
@@ -25,16 +25,16 @@ Schema: `Sql/CreateSqlite.sql`. Local copy lives under `Data/cjm-apply.db`.
 
 ## API (`CjmApplyApi`)
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /api/health` | Liveness + DB path |
-| `POST /api/parse` | Body `{ "text": "..." }` → `{ jobs, count, source }` (`html` or `text`) |
-| `POST /api/jobs/import` | Body `{ "jobs": [ ... ] }` → `{ added, skipped, errors, total }` (`INSERT OR IGNORE`) |
-| `GET /api/jobs` | List saved jobs (`?take=500`) |
-| `POST /api/jobs/{jobKey}/applied/toggle` | Toggle `Applied` + set/clear `AppliedAt` |
-| `POST /api/jobs/{jobKey}/ignored/toggle` | Toggle `Ignored` + set/clear `IgnoredAt` |
-| `POST /api/sql` | Universal SQL relay `{ "sql", "parameters" }` |
-| Auth | Header `X-Api-Key` or `Authorization: Bearer …` (`CJM_APPLY_API_KEY`); empty key = open (local only — avoid with the SPA) |
+| Endpoint                                 | Purpose                                                                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/health`                        | Liveness + DB path                                                                                                        |
+| `POST /api/parse`                        | Body `{ "text": "..." }` → `{ jobs, count, source }` (`html` or `text`)                                                   |
+| `POST /api/jobs/import`                  | Body `{ "jobs": [ ... ] }` → `{ added, skipped, errors, total }` (`INSERT OR IGNORE`)                                     |
+| `GET /api/jobs`                          | List saved jobs (`?take=500`)                                                                                             |
+| `POST /api/jobs/{jobKey}/applied/toggle` | Toggle `Applied` + set/clear `AppliedAt`                                                                                  |
+| `POST /api/jobs/{jobKey}/ignored/toggle` | Toggle `Ignored` + set/clear `IgnoredAt`                                                                                  |
+| `POST /api/sql`                          | Universal SQL relay `{ "sql", "parameters" }`                                                                             |
+| Auth                                     | Header `X-Api-Key` or `Authorization: Bearer …` (`CJM_APPLY_API_KEY`); empty key = open (local only — avoid with the SPA) |
 
 CORS is allow-listed via `Cors:Origins` (Development defaults to `http://localhost:4200`). Production ships with an empty list (no browser CORS) unless you set origins explicitly. `/api/sql` is for trusted non-browser clients; do not put the API key in the SPA bundle.
 
@@ -72,12 +72,12 @@ Routes:
 
 ## Solution layout
 
-| Project | Role |
-|---|---|
-| `CjmApply.Core` | Shared `JobRecord`, LinkedIn paste parser, JobKey builder |
-| `CjmApplyApi` | HTTP API (parse, import, SQL) |
-| `CjmApplyAssistant` | Windows Forms (optional) |
-| `web` | Angular JobGrid SPA |
+| Project             | Role                                                      |
+| ------------------- | --------------------------------------------------------- |
+| `CjmApply.Core`     | Shared `JobRecord`, LinkedIn paste parser, JobKey builder |
+| `CjmApplyApi`       | HTTP API (parse, import, SQL)                             |
+| `CjmApplyAssistant` | Windows Forms (optional)                                  |
+| `web`               | Angular JobGrid SPA                                       |
 
 ## Typical workflow
 

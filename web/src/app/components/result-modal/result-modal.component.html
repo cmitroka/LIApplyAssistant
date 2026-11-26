@@ -15,16 +15,21 @@
 
   <div class="modal__body">
     <p class="summary">
-      <strong>{{ result.added }}</strong> job{{ result.added === 1 ? '' : 's' }} added,
-      <strong>{{ result.skipped }}</strong> skipped because they already exist
+      <strong>{{ result.added }}</strong> job{{
+        result.added === 1 ? "" : "s"
+      }}
+      added, <strong>{{ result.skipped }}</strong> skipped because they already
+      exist
     </p>
 
     @if (result.errors.length) {
       <div class="errors">
-        <p class="errors__label">{{ result.errors.length }} could not be processed:</p>
+        <p class="errors__label">
+          {{ result.errors.length }} could not be processed:
+        </p>
         <ul>
           @for (err of result.errors; track $index) {
-            <li>{{ err.jobTitle || err.jobKey || 'Job' }} — {{ err.error }}</li>
+            <li>{{ err.jobTitle || err.jobKey || "Job" }} — {{ err.error }}</li>
           }
         </ul>
       </div>
