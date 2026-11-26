@@ -51,7 +51,7 @@ describe('ApiService', () => {
         jobTitle: 'Designer',
         company: 'Northstar',
         location: 'Downingtown, PA',
-        viewed: true,
+        viewed: false,
         applied: false,
         ignored: false,
         isTopApplicant: false,
