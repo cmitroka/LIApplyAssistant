@@ -38,21 +38,35 @@ This will compile your project and store the build artifacts in the `dist/` dire
 
 ## Running unit tests
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Unit tests use Karma and Jasmine. `npm test` watches in Chrome. CI and local headless runs:
 
 ```bash
-ng test
+npm run test:ci
 ```
+
+That command uses Chrome headless, writes `coverage/`, and fails if coverage drops below the thresholds in `karma.conf.js`.
+
+## Linting and formatting
+
+```bash
+npm run lint
+npm run format:check
+npm run format
+```
+
+ESLint is [angular-eslint](https://github.com/angular-eslint/angular-eslint). Prettier owns formatting. A Husky pre-commit hook runs both on staged files after `npm install` (from this directory).
 
 ## Running end-to-end tests
 
-For end-to-end (e2e) testing, run:
+Playwright smoke tests run against a production build served as a single-page app:
 
 ```bash
-ng e2e
+npm run e2e:install   # once per machine
+npm run build -- --configuration=production
+npm run e2e
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+The pipeline, required status checks, and Azure deploy are documented in the repository README under **Engineering practices**.
 
 ## Additional Resources
 

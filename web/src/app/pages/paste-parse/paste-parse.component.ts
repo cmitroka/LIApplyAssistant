@@ -49,12 +49,8 @@ export class PasteParseComponent {
   readonly importResult = signal<ImportResponse | null>(null);
 
   readonly charCount = computed(() => this.pasteText().length);
-  readonly selectedCount = computed(
-    () => this.jobs().filter((j) => j.selected).length,
-  );
-  readonly topApplicantCount = computed(
-    () => this.jobs().filter((j) => j.isTopApplicant).length,
-  );
+  readonly selectedCount = computed(() => this.jobs().filter((j) => j.selected).length);
+  readonly topApplicantCount = computed(() => this.jobs().filter((j) => j.isTopApplicant).length);
   readonly allSelected = computed(
     () => this.jobs().length > 0 && this.jobs().every((j) => j.selected),
   );
@@ -97,9 +93,7 @@ export class PasteParseComponent {
         this.jobs.set((res.jobs ?? []).map((job) => this.toPreview(job, true)));
         this.parsing.set(false);
         if ((res.jobs ?? []).length === 0) {
-          this.parseError.set(
-            'No jobs found in the paste. Try separating cards with ---.',
-          );
+          this.parseError.set('No jobs found in the paste. Try separating cards with ---.');
         }
       },
       error: (err) => {
@@ -110,9 +104,7 @@ export class PasteParseComponent {
   }
 
   toggleSelectAll(checked: boolean): void {
-    this.jobs.update((rows) =>
-      rows.map((row) => ({ ...row, selected: checked })),
-    );
+    this.jobs.update((rows) => rows.map((row) => ({ ...row, selected: checked })));
   }
 
   toggleRow(id: string, checked: boolean): void {
@@ -121,11 +113,7 @@ export class PasteParseComponent {
     );
   }
 
-  updateField<K extends keyof PreviewJob>(
-    id: string,
-    field: K,
-    value: PreviewJob[K],
-  ): void {
+  updateField<K extends keyof PreviewJob>(id: string, field: K, value: PreviewJob[K]): void {
     this.jobs.update((rows) =>
       rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
     );
