@@ -1,0 +1,22 @@
+# Context is repo root (see CjmApplyApi/Dockerfile). Keep host NuGet/obj out of Linux builds.
+**/bin/
+**/obj/
+**/*.user
+**/*.suo
+
+# Not needed for the API image
+web/
+.git/
+.vs/
+.idea/
+.github/
+Sql/
+Samples/
+ParseProbe/
+*.md
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+.api-key.local

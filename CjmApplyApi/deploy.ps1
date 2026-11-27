@@ -2,6 +2,7 @@
 # Requires Docker Desktop running unless -SkipBuild is set (image already in ACR).
 # Usage: .\deploy.ps1 -ApiKey "your-secret"
 #        .\deploy.ps1 -ApiKey "your-secret" -SkipBuild -ImageTag 20261124170807
+#        .\deploy.ps1 -ApiKey "your-secret" -SpaOrigins @("https://other.azurestaticapps.net")
 
 param(
     [Parameter(Mandatory = $true)]
@@ -11,6 +12,10 @@ param(
     [string]$AcrName = "cjmpipelinemcp",
     [string]$Environment = "pipeline-mcp-env",
     [string]$ImageTag = $(Get-Date -Format "yyyyMMddHHmmss"),
+    # Browser origins allowed by Cors:Origins (ASP.NET binds Cors__Origins__N).
+    [string[]]$SpaOrigins = @(
+        "https://mango-mud-03b14d70f.4.azurestaticapps.net"
+    ),
     [switch]$SkipBuild
 )
 
@@ -20,6 +25,21 @@ $repoRoot = Split-Path -Parent $apiDir
 Set-Location $apiDir
 
 $image = "$AcrName.azurecr.io/cjm-apply-api:$ImageTag"
+
+$corsEnvPairs = @()
+$corsYamlLines = @()
+$corsIndex = 0
+foreach ($rawOrigin in $SpaOrigins) {
+    $origin = $rawOrigin.Trim().TrimEnd('/')
+    if (-not $origin) { continue }
+    $corsEnvPairs += "Cors__Origins__$corsIndex=$origin"
+    $corsYamlLines += "      - name: Cors__Origins__$corsIndex"
+    $corsYamlLines += "        value: $origin"
+    $corsIndex++
+}
+if ($corsEnvPairs.Count -eq 0) {
+    Write-Warning "SpaOrigins is empty; browser CORS will remain denied until you set Cors__Origins__N."
+}
 
 if (-not $SkipBuild) {
     docker info | Out-Null
@@ -73,7 +93,7 @@ if (-not $appExists) {
         --cpu 0.25 `
         --memory 0.5Gi `
         --system-assigned `
-        --env-vars "CJM_APPLY_DB=/mnt/pipeline/cjm-apply.db" "CJM_APPLY_API_KEY=$ApiKey"
+        --env-vars "CJM_APPLY_DB=/mnt/pipeline/cjm-apply.db" "CJM_APPLY_API_KEY=$ApiKey" @corsEnvPairs
     if ($LASTEXITCODE -ne 0) { throw "containerapp create failed" }
 }
 
@@ -99,6 +119,12 @@ Write-Host "Setting API key secret and Azure Files mount ..."
 az containerapp secret set -g $ResourceGroup -n $AppName --secrets "cjm-apply-api-key=$ApiKey"
 if ($LASTEXITCODE -ne 0) { throw "secret set failed" }
 
+$corsYamlBlock = if ($corsYamlLines.Count -gt 0) {
+    "`n" + ($corsYamlLines -join "`n")
+} else {
+    ""
+}
+
 $yaml = @"
 properties:
   template:
@@ -109,7 +135,7 @@ properties:
       - name: CJM_APPLY_DB
         value: /mnt/pipeline/cjm-apply.db
       - name: CJM_APPLY_API_KEY
-        secretRef: cjm-apply-api-key
+        secretRef: cjm-apply-api-key$corsYamlBlock
       resources:
         cpu: 0.25
         memory: 0.5Gi
@@ -143,3 +169,6 @@ Write-Host "Deployed: https://$fqdn"
 Write-Host "Health:   https://$fqdn/api/health"
 Write-Host "SQL:      POST https://$fqdn/api/sql"
 Write-Host "Header:   X-Api-Key: <your key>"
+if ($corsEnvPairs.Count -gt 0) {
+    Write-Host "CORS:     $($SpaOrigins -join ', ')"
+}
