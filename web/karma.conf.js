@@ -45,6 +45,10 @@ module.exports = function (config) {
       },
     },
     reporters: ['progress', 'kjhtml'],
+    // Bind to loopback only so other Electron apps (e.g. Cursor) do not attach as
+    // stray Karma browsers during test:ci (which launches ChromeHeadlessCI only).
+    hostname: '127.0.0.1',
+    listenAddress: '127.0.0.1',
     browsers: ['Chrome'],
     customLaunchers: {
       ChromeHeadlessCI: {

@@ -50,8 +50,8 @@ describe('ApiService', () => {
       {
         jobTitle: 'Designer',
         company: 'Northstar',
-        location: 'Austin, TX',
-        viewed: true,
+        location: 'Downingtown, PA',
+        viewed: false,
         applied: false,
         ignored: false,
         isTopApplicant: false,
@@ -69,6 +69,30 @@ describe('ApiService', () => {
     expect(req.request.body).toEqual({ jobs });
     req.flush({ added: 1, skipped: 0, total: 1, errors: [] });
     expect(added).toBe(1);
+  });
+
+  it('lists saved jobs from /api/jobs', () => {
+    let count = -1;
+    service.listJobs(100).subscribe((res) => {
+      count = res.count;
+    });
+
+    const req = http.expectOne('http://127.0.0.1:5088/api/jobs?take=100');
+    expect(req.request.method).toBe('GET');
+    req.flush({ jobs: [], count: 0 });
+    expect(count).toBe(0);
+  });
+
+  it('posts applied and ignored toggles for a job key', () => {
+    service.toggleApplied('ABC').subscribe();
+    const appliedReq = http.expectOne('http://127.0.0.1:5088/api/jobs/ABC/applied/toggle');
+    expect(appliedReq.request.method).toBe('POST');
+    appliedReq.flush({ jobKey: 'ABC', applied: true, appliedAt: '2026-11-26T00:00:00.000Z' });
+
+    service.toggleIgnored('A/B').subscribe();
+    const ignoredReq = http.expectOne('http://127.0.0.1:5088/api/jobs/A%2FB/ignored/toggle');
+    expect(ignoredReq.request.method).toBe('POST');
+    ignoredReq.flush({ jobKey: 'A/B', ignored: true, ignoredAt: '2026-11-26T00:00:00.000Z' });
   });
 });
 

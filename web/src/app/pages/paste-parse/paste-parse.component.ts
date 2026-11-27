@@ -51,8 +51,6 @@ export class PasteParseComponent {
   readonly charCount = computed(() => this.pasteText().length);
   readonly selectedCount = computed(() => this.jobs().filter((j) => j.selected).length);
   readonly topApplicantCount = computed(() => this.jobs().filter((j) => j.isTopApplicant).length);
-  readonly selectedCount = computed(() => this.jobs().filter((j) => j.selected).length);
-  readonly topApplicantCount = computed(() => this.jobs().filter((j) => j.isTopApplicant).length);
   readonly allSelected = computed(
     () => this.jobs().length > 0 && this.jobs().every((j) => j.selected),
   );
