@@ -2,8 +2,9 @@
 # The .NET API is not part of this workflow: Static Web Apps cannot host it.
 # See README "Engineering practices".
 #
-# Without the repository secret AZURE_STATIC_WEB_APPS_API_TOKEN the job finishes
-# successfully and does not deploy. Create the Static Web App, then add the token.
+# Without the deployment token secret the job finishes successfully and does not
+# deploy. Token is the one Azure created when linking this Static Web App
+# (AZURE_STATIC_WEB_APPS_API_TOKEN_MANGO_MUD_03B14D70F).
 
 name: Azure Static Web Apps
 
@@ -31,11 +32,11 @@ jobs:
       - name: Check deployment token
         id: guard
         env:
-          AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_MANGO_MUD_03B14D70F }}
         run: |
           if [ -z "${AZURE_STATIC_WEB_APPS_API_TOKEN}" ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Azure Static Web Apps skipped::Secret AZURE_STATIC_WEB_APPS_API_TOKEN is not set. Deploy and preview close were skipped."
+            echo "::notice title=Azure Static Web Apps skipped::Deploy token secret is not set. Deploy and preview close were skipped."
           else
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
@@ -63,7 +64,7 @@ jobs:
         if: steps.guard.outputs.present == 'true' && github.event.action != 'closed'
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_MANGO_MUD_03B14D70F }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
           app_location: web/dist/jobgrid/browser
@@ -75,6 +76,6 @@ jobs:
         if: steps.guard.outputs.present == 'true' && github.event.action == 'closed'
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_MANGO_MUD_03B14D70F }}
           action: close
           app_location: web
