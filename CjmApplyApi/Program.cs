@@ -384,44 +384,58 @@ static void EnsureDatabase(string dbPath)
     if (!string.IsNullOrWhiteSpace(dir))
         Directory.CreateDirectory(dir);
 
-    using var connection = new SqliteConnection($"Data Source={dbPath}");
-    connection.Open();
-
-    using (var pragma = connection.CreateCommand())
+    // Azure Files + overlapping Container App revisions can briefly contend on the
+    // same SQLite file; retry instead of crashing the process on startup.
+    const int maxAttempts = 8;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
     {
-        pragma.CommandText = "PRAGMA busy_timeout = 5000;";
-        pragma.ExecuteNonQuery();
+        try
+        {
+            using var connection = new SqliteConnection($"Data Source={dbPath}");
+            connection.Open();
+
+            using (var pragma = connection.CreateCommand())
+            {
+                pragma.CommandText = "PRAGMA busy_timeout = 15000;";
+                pragma.ExecuteNonQuery();
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE IF NOT EXISTS Jobs (
+                    JobKey            TEXT NOT NULL PRIMARY KEY,
+                    JobTitle          TEXT NOT NULL,
+                    Company           TEXT NOT NULL,
+                    Location          TEXT NULL,
+                    Viewed            INTEGER NOT NULL DEFAULT 0,
+                    PostedDateText    TEXT NULL,
+                    PostedDate        TEXT NULL,
+                    IsTopApplicant    INTEGER NOT NULL DEFAULT 0,
+                    ApplyUrl          TEXT NULL,
+                    CompensationText  TEXT NULL,
+                    CompSpecified     TEXT NULL,
+                    ResumeUsed        TEXT NULL,
+                    Applied           INTEGER NOT NULL DEFAULT 0,
+                    AppliedAt         TEXT NULL,
+                    Ignored           INTEGER NOT NULL DEFAULT 0,
+                    IgnoredAt         TEXT NULL,
+                    RawPaste          TEXT NULL,
+                    CreatedAt         TEXT NOT NULL,
+                    UpdatedAt         TEXT NOT NULL
+                );
+                """;
+            command.ExecuteNonQuery();
+
+            EnsureColumn(connection, "Applied", "INTEGER NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "Ignored", "INTEGER NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "IgnoredAt", "TEXT NULL");
+            return;
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 5 && attempt < maxAttempts)
+        {
+            Thread.Sleep(TimeSpan.FromSeconds(attempt));
+        }
     }
-
-    using var command = connection.CreateCommand();
-    command.CommandText = """
-        CREATE TABLE IF NOT EXISTS Jobs (
-            JobKey            TEXT NOT NULL PRIMARY KEY,
-            JobTitle          TEXT NOT NULL,
-            Company           TEXT NOT NULL,
-            Location          TEXT NULL,
-            Viewed            INTEGER NOT NULL DEFAULT 0,
-            PostedDateText    TEXT NULL,
-            PostedDate        TEXT NULL,
-            IsTopApplicant    INTEGER NOT NULL DEFAULT 0,
-            ApplyUrl          TEXT NULL,
-            CompensationText  TEXT NULL,
-            CompSpecified     TEXT NULL,
-            ResumeUsed        TEXT NULL,
-            Applied           INTEGER NOT NULL DEFAULT 0,
-            AppliedAt         TEXT NULL,
-            Ignored           INTEGER NOT NULL DEFAULT 0,
-            IgnoredAt         TEXT NULL,
-            RawPaste          TEXT NULL,
-            CreatedAt         TEXT NOT NULL,
-            UpdatedAt         TEXT NOT NULL
-        );
-        """;
-    command.ExecuteNonQuery();
-
-    EnsureColumn(connection, "Applied", "INTEGER NOT NULL DEFAULT 0");
-    EnsureColumn(connection, "Ignored", "INTEGER NOT NULL DEFAULT 0");
-    EnsureColumn(connection, "IgnoredAt", "TEXT NULL");
 }
 
 static void EnsureColumn(SqliteConnection connection, string columnName, string columnDef)
