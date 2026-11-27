@@ -163,10 +163,24 @@ Set-Content -Path $yamlPath -Value $yaml -Encoding utf8
 az containerapp update -g $ResourceGroup -n $AppName --yaml $yamlPath
 if ($LASTEXITCODE -ne 0) { throw "yaml update failed" }
 
+# Overlapping revisions share the Azure Files SQLite DB and can lock each other out.
+Write-Host "Deactivating older revisions ..."
+$latest = az containerapp revision list -g $ResourceGroup -n $AppName --query "reverse(sort_by([?properties.active], &properties.createdTime))[0].name" -o tsv
+$active = az containerapp revision list -g $ResourceGroup -n $AppName --query "[?properties.active].name" -o tsv
+foreach ($rev in $active) {
+    if ($rev -and $latest -and ($rev -ne $latest)) {
+        Write-Host "  deactivate $rev"
+        az containerapp revision deactivate -g $ResourceGroup -n $AppName --revision $rev 2>$null | Out-Null
+    }
+}
+
 $fqdn = az containerapp show -g $ResourceGroup -n $AppName --query "properties.configuration.ingress.fqdn" -o tsv
 Write-Host ""
 Write-Host "Deployed: https://$fqdn"
 Write-Host "Health:   https://$fqdn/api/health"
+Write-Host "Parse:    POST https://$fqdn/api/parse"
+Write-Host "Import:   POST https://$fqdn/api/jobs/import"
+Write-Host "Jobs:     GET  https://$fqdn/api/jobs"
 Write-Host "SQL:      POST https://$fqdn/api/sql"
 Write-Host "Header:   X-Api-Key: <your key>"
 if ($corsEnvPairs.Count -gt 0) {
